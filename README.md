@@ -47,17 +47,18 @@ Usage
 3. For extented use: If you just want to get the output tuple and want to save
    output information to other places (for example, MySQL), do this:
 
-       from specimen_info import (Query, write_to_xlsx_file,
+        from specimen_info import (Query, write_to_xlsx_file,
                                   write_to_sqlite3)
 
-       q = Query(query_file=query_filename, offline_data_file=data_filename)
-       out_tuple_list = q.do_multi_query()
+        q = Query(query_file=query_filename, offline_data_file=data_filename)
+        out_tuple_list = q.do_multi_query()
 
-       # If you want to save output to xlsx file
-       write_to_xlsx_file(out_tuple_list, xlsx_outfile_name="specimen.xlsx")
+        # If you want to save output to xlsx file
+        write_to_xlsx_file(out_tuple_list, xlsx_outfile_name="specimen.xlsx")
 
-       # If you want to save output to SQLite3 db file
-       write_to_sqlite3(out_tuple_list, sqlite3_file="specimen.sqlite")
+        # If you want to save output to SQLite3 db file
+        write_to_sqlite3(out_tuple_list, sqlite3_file="specimen.sqlite")
 
-       # If you want to save to other places,
-       # Just write your extension code.
+        # If you want to save to other places,
+        # Just write your extension code.
+
