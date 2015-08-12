@@ -3,6 +3,10 @@ SpecimenInfo
 Fetch and format plant specimen informations from data file and web, save
 outcome to xlsx file and SQLite3 db file.
 
+Screen Shot (GUI Version)
+-------------------------
+![Screen Shot](./data/img.PNG)
+
 
 Preparation
 -----------
