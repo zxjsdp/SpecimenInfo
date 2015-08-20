@@ -52,7 +52,7 @@ Usage
    output information to other places (for example, MySQL), do this:
 
         from specimen_info import (Query, write_to_xlsx_file,
-                                  write_to_sqlite3)
+                                   write_to_sqlite3)
 
         q = Query(query_file=query_filename, offline_data_file=data_filename)
         out_tuple_list = q.do_multi_query()
@@ -64,7 +64,7 @@ Usage
         write_to_sqlite3(out_tuple_list, sqlite3_file="specimen.sqlite")
 
         # If you want to save to other places,
-        # Just write your extension code.
+        # Just write your own extension code.
 
 Qeury File and Data File Format
 -------------------------------
@@ -102,7 +102,7 @@ Qeury File and Data File Format
     18. 录入员
     19. 录入日期
 
-3. Output information format (in xlsx file and SQLite db file)
+3. Output information format (in xlsx file database)
 
     1. 馆代码
     2. 流水号
