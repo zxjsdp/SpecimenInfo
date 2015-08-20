@@ -66,3 +66,80 @@ Usage
         # If you want to save to other places,
         # Just write your extension code.
 
+Qeury File and Data File Format
+-------------------------------
+
+1. Query file
+
+    You need these information for query xlsx file:
+
+    1. 流水号
+    2. 条形码
+    3. 物种名（二名法）
+    4. 同一物种编号
+
+2. Data file
+    
+    You need these information for data xlsx file:
+
+    1. 物种编号
+    2. 中文名
+    3. 种名（拉丁）
+    4. 科名
+    5. 科名（拉丁）
+    6. 省
+    7. 市
+    8. 具体小地名
+    9. 纬
+    10. 东经
+    11. 海拔
+    12. 日期
+    13. 份数
+    14. 草灌
+    15. 采集人
+    16. 鉴定人
+    17. 鉴定日期
+    18. 录入员
+    19. 录入日期
+
+3. Output information format (in xlsx file and SQLite db file)
+
+    1. 馆代码
+    2. 流水号
+    3. 条形码
+    4. 模式类型
+    5. 库存
+    6. 标本状态
+    7. 采集人
+    8. 采集号
+    9. 采集日期
+    10. 国家
+    11. 省市
+    12. 区县
+    13. 海拔
+    14. 负海拔
+    15. 科
+    16. 属
+    17. 种
+    18. 定名人
+    19. 种下等级
+    10. 中文名
+    21. 鉴定人
+    22. 鉴定日期
+    23. 备注
+    24. 地名
+    25. 生境
+    26. 经度
+    27. 纬度
+    28. 备注2
+    29. 录入员
+    30. 录入日期
+    31. 习性
+    32. 体高
+    33. 胸径
+    34. 茎
+    35. 叶
+    36. 花
+    37. 果实
+    38. 寄主
+
