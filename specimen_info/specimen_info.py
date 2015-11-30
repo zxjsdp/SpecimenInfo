@@ -644,20 +644,23 @@ class Query(object):
             logging.error(error_msg)
             raise IndexError(error_msg)
 
-        # Infos from web
-        genus = web_info_tuple[0] if web_info_tuple[0] \
-            else one_query_tuple[2].split()[0]
-        species = web_info_tuple[1] if web_info_tuple[1] \
-            else ' '.join(one_query_tuple[2].split()[1:])
-        namer = web_info_tuple[2]
-        habitat = web_info_tuple[3]
-        body_height = web_info_tuple[4]
-        DBH = web_info_tuple[5]
-        stem = web_info_tuple[6]
-        leaf = web_info_tuple[7]
-        flower = web_info_tuple[8]
-        fruit = web_info_tuple[9]
-        host = web_info_tuple[10]
+        try:
+            genus = web_info_tuple[0] if web_info_tuple[0] \
+                else one_query_tuple[2].split()[0]
+            species = web_info_tuple[1] if web_info_tuple[1] \
+                else ' '.join(one_query_tuple[2].split()[1:])
+            namer = web_info_tuple[2]
+            habitat = web_info_tuple[3]
+            body_height = web_info_tuple[4]
+            DBH = web_info_tuple[5]
+            stem = web_info_tuple[6]
+            leaf = web_info_tuple[7]
+            flower = web_info_tuple[8]
+            fruit = web_info_tuple[9]
+            host = web_info_tuple[10]
+        except Exception as e:
+            logging.warning("Skip... Cannot get info from web for:  %s. %s" %
+                            (one_query_tuple(2), e))
 
         f = FinalInfo(
             library_code=library_code,
