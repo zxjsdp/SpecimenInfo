@@ -65,7 +65,7 @@ else:
     raise ImportError('Cannot identify your Python version.')
 
 
-__version__ = "v1.1.5"
+__version__ = "v1.1.6"
 
 __all__ = ['Query', 'write_to_xlsx_file', 'write_to_sqlite3',
            'gui_main']
