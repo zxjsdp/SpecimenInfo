@@ -55,12 +55,17 @@ from collections import namedtuple
 from multiprocessing.dummy import Pool
 
 
-__version__ = "v1.1.5"
+__version__ = "v1.1.6"
 
 
 # ==================================================
 # You can change settings here if needed
 # ==================================================
+DATA_FILE_COLUMN_NUM = 19
+QUERY_FILE_COLUMN_NUM = 4
+DEFAULT_LATIN_NAME_FILE = os.path.join('.', 'data', 'latin_names.txt')
+DEFAULT_LATIN_NAME_FILE_2 = os.path.join('.', 'data',
+                                         'latin_names_only_head_and_tail.txt')
 POOL_NUM = 30
 SHOW_GARBAGE_LOG = False
 
@@ -889,6 +894,100 @@ def write_to_sqlite3(out_tuple_list, sqlite3_file="specimen.sqlite"):
         conn.close()
 
 
+def data_validation(data_file, query_file):
+    """Validate data and query files before program run.
+
+    This will save time. If there is error in data file, program may crush
+    after long time run. So it's better to validate data file before running.
+    """
+    # Get file tuple list
+    data_file_tuple_list = XlsxFile(data_file).xlsx_matrix
+    query_file_tuple_list = XlsxFile(query_file).xlsx_matrix
+    latin_names_in_data_file = [row[2].strip()
+                                for row in data_file_tuple_list[1:]]
+    latin_names_in_query_file = [row[2].strip()
+                                 for row in query_file_tuple_list]
+
+    logging.info(BAR)
+    # Check if number of lines of data file is correct
+    logging.info(THIN_BAR)
+    logging.info('[ Start ] Validating if number of lines in data file is '
+                 'correct...')
+    if len(data_file_tuple_list[0]) != DATA_FILE_COLUMN_NUM:
+        logging.error(
+            '[ERROR] Number of columns in data file '
+            'should be: %s. (now: %s)' %
+            (DATA_FILE_COLUMN_NUM, len(data_file_tuple_list[0])))
+        raise ValueError('Please Check data file.')
+
+    # Check if number of lines of query file is correct
+    logging.info(THIN_BAR)
+    logging.info('[ Start ] Validating if number of lines in query file is '
+                 'correct...')
+    if len(query_file_tuple_list[0]) != QUERY_FILE_COLUMN_NUM:
+        logging.error(
+            '[ERROR] Number of columns in query file '
+            'should be: %s. (now: %s)' %
+            (QUERY_FILE_COLUMN_NUM, len(query_file_tuple_list[0])))
+        raise ValueError('Please Check query file.')
+
+    # Check if latin names in query file in data file
+    logging.info(THIN_BAR)
+    logging.info('[ Start ] Validating if latin names (in query file) in '
+                 'data file...')
+    tmp_latin_name_set = set([])
+    latin_names_set_from_data_file = set(latin_names_in_data_file)
+    for i, latin_name in enumerate(latin_names_in_query_file):
+        if latin_name not in latin_names_set_from_data_file:
+            if latin_name not in tmp_latin_name_set:
+                tmp_latin_name_set.add(latin_name)
+                logging.warning(
+                    '    [ WARNING ] Latin name not in data file:  '
+                    '[%s: Line %s]  %s' %
+                    (query_file, i+1, latin_name))
+    logging.info(THIN_BAR)
+
+    # Check if Latin names in built-in Latin name list
+    try:
+        with open(DEFAULT_LATIN_NAME_FILE, 'r') as f:
+            default_latin_names_list_1 = [x.strip() for x in f.readlines()
+                                          if x.strip()]
+        with open(DEFAULT_LATIN_NAME_FILE_2, 'r') as f:
+            default_latin_names_list_2 = [x.strip() for x in f.readlines()
+                                          if x.strip()]
+        default_latin_names = set(default_latin_names_list_1
+                                  + default_latin_names_list_2)
+    except IOError as e:
+        logging.warning(
+            'Pass latin name check because no built-in latin name file '
+            'was found: %s. (%s)' % (DEFAULT_LATIN_NAME_FILE, e))
+    else:
+        logging.info('[ Start ] Validating if latin names from data file in '
+                     'built-in latin name list')
+        tmp_warning_set = set([])
+        for i, latin_name in enumerate(latin_names_in_data_file):
+            if latin_name not in default_latin_names:
+                if latin_name not in tmp_warning_set:
+                    tmp_warning_set.add(latin_name)
+                    logging.warning(
+                        '    [ WARNING ] Not in built-in Latin name list:  '
+                        '[%s: Line %s]  %s' %
+                        (data_file, i+1, latin_name))
+        logging.info(THIN_BAR)
+        logging.info('[ Start ] Validating if latin names from query file in'
+                     ' built-in latin name list')
+        tmp_warning_set = set([])
+        for i, latin_name in enumerate(latin_names_in_query_file):
+            if latin_name not in default_latin_names:
+                if latin_name not in tmp_warning_set:
+                    tmp_warning_set.add(latin_name)
+                    logging.warning(
+                        '    [ WARNING ] Not in built-in Latin name list:  '
+                        '[%s: Line %s]  %s' %
+                        (query_file, i+1, latin_name))
+    logging.info(BAR)
+
+
 def arg_parse():
     """Parse arguments and return filenames."""
     parser = argparse.ArgumentParser()
@@ -939,6 +1038,8 @@ def main():
         args.query_file,
         args.data_file,
         args.output_file)
+    # Data validation before program run
+    data_validation(offline_data_file, query_file)
 
     q = Query(query_file, offline_data_file)
     out_tuple_list = q.do_multi_query()
