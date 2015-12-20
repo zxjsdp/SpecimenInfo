@@ -6,6 +6,12 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.1.6
+--------------
+
+- Add data validation before program running. This will save lots of time
+  if data file or query file is illegal.
+
 Version v1.1.5
 --------------
 
