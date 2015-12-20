@@ -1353,13 +1353,26 @@ class Application(tk.Frame):
                      % (out_sqlite3_file, THIN_BAR))
 
         # Data validation
+        self.log_label_value.set('Start validating data ...')
         data_validation(data_file=self.data_file, query_file=self.query_file)
+        self.log_area.update_idletasks()
+
+        self.log_label_value.set('Start preparing querying ... '
+                                 'Please wait patiently ...')
         q = Query(self.query_file, self.data_file)
         self.log_area.update_idletasks()
+
+        self.log_label_value.set('Start doing multi-querying ...')
         out_tuple_list = q.do_multi_query()
         self.log_area.update_idletasks()
+
+        self.log_label_value.set('Starting writing outcome to xlsx file ...')
         write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=out_xlsx_file)
+
+        self.log_label_value.set('Starting writing to SQLite3 file ...')
         write_to_sqlite3(out_tuple_list, sqlite3_file=out_sqlite3_file)
+        self.log_label_value.set('Job finished. Please see log.txt for '
+                                 'more information.')
 
 
 def main():
