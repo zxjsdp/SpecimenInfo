@@ -6,6 +6,11 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.1.8
+--------------
+
+- Fix missing built-in latin name data file when validating files
+
 Version v1.1.7
 --------------
 
