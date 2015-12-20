@@ -6,6 +6,11 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.1.7
+--------------
+
+- Fix status text not updating bug.
+
 Version v1.1.6
 --------------
 
