@@ -47,6 +47,7 @@ import os
 import bs4
 import sys
 import time
+import json
 import logging
 import sqlite3
 import openpyxl
@@ -66,7 +67,7 @@ else:
     raise ImportError('Cannot identify your Python version.')
 
 
-__version__ = "v1.1.10"
+__version__ = "v1.2.0"
 
 __all__ = ['Query', 'write_to_xlsx_file', 'write_to_sqlite3',
            'gui_main']
@@ -77,9 +78,6 @@ __all__ = ['Query', 'write_to_xlsx_file', 'write_to_sqlite3',
 # ==================================================
 DATA_FILE_COLUMN_NUM = 19
 QUERY_FILE_COLUMN_NUM = 4
-DEFAULT_LATIN_NAME_FILE = os.path.join('.', 'data', 'latin_names.txt')
-DEFAULT_LATIN_NAME_FILE_2 = os.path.join('.', 'data',
-                                         'latin_names_only_head_and_tail.txt')
 POOL_NUM = 30
 SHOW_GARBAGE_LOG = False
 
@@ -93,6 +91,28 @@ HEADER_TUPLE = (
     "备注2", "录入员", "录入日期", "习性", "体高", "胸径", "茎",
     "叶", "花", "果实", "寄主")
 
+
+# ==================================================
+# Be careful if you want to change values below
+# ==================================================
+
+# If no content, this is the number of blank tuple
+TOTAL_LINES = 38
+
+# Local JSON cache file name for web search
+LOCAL_JSON_CACHE_FILE = 'web_cache.json'
+
+# Dictionaries used for cache
+# Web data cache
+_web_data_cache_dict = {}
+# xlsx data cache
+_xlsx_data_cache_dict = {}
+
+# For fancy display
+BAR = '\n' + '=' * 60 + '\n'
+THIN_BAR = '\n' + '-' * 60 + '\n'
+LINE_SPLITER = '-' * 50
+THIN_BAR_NO_NEWLINE = '-' * 60
 
 HELP = """
 PlantSpecimenInfoInput
@@ -131,26 +151,9 @@ Usage
             $ python specimen_input.py -i query.xlsx -d data.xlsx -o outfile.xslx
 """
 
-
-# ==================================================
-# Be careful if you want to change values below
-# ==================================================
-
-# If no content, this is the number of blank tuple
-TOTAL_LINES = 38
-
-# Dictionaries used for cache
-# Web data cache
-_web_data_cache_dict = {}
-# xlsx data cache
-_xlsx_data_cache_dict = {}
-
-# For fancy display
-BAR = '\n' + '=' * 60 + '\n'
-THIN_BAR = '\n' + '-' * 60 + '\n'
-LINE_SPLITER = '-' * 50
-THIN_BAR_NO_NEWLINE = '-' * 60
-
+DEFAULT_LATIN_NAME_FILE = os.path.join('.', 'data', 'latin_names.txt')
+DEFAULT_LATIN_NAME_FILE_2 = os.path.join('.', 'data',
+                                         'latin_names_only_head_and_tail.txt')
 
 # logging
 file_handler_format = ('[%(levelname)s]'
@@ -500,7 +503,27 @@ class WebInfoCacheMultithreading(object):
                          "  [ %d ]\n" % POOL_NUM)
         else:
             pool = Pool()
-        pool.map(self._single_query, self.non_repeatitive_species_name_list)
+        if os.path.isfile(LOCAL_JSON_CACHE_FILE):
+            with open(LOCAL_JSON_CACHE_FILE, 'rb') as f:
+                local_web_cache_dict = json.loads(f.read())
+            species_in_local_json_cache = local_web_cache_dict.keys()
+            logging.info(
+                '[ CACHE ] Get cache from local JSON file:\n  |- %s' %
+                '\n  |- '.join(species_in_local_json_cache))
+        else:
+            species_in_local_json_cache = []
+            local_web_cache_dict = {}
+        species_not_in_cache = list(
+            set(self.non_repeatitive_species_name_list)
+            .difference(set(species_in_local_json_cache)))
+        pool.map(self._single_query, species_not_in_cache)
+        _web_data_cache_dict.update(local_web_cache_dict)
+        with open(LOCAL_JSON_CACHE_FILE, 'wb') as f:
+            json.dump(_web_data_cache_dict, f,
+                      indent=4, separators=(',', ': '))
+            logging.info(
+                '[ CACHE ] Write all cache to local JSON file:\n  |- %s' %
+                '\n  |- '.join(_web_data_cache_dict.keys()))
         pool.close()
         pool.join()
 
@@ -776,8 +799,8 @@ class Query(object):
         logging.info("%sThe program will search Internet first. "
                      "This may take some time%s" % (THIN_BAR, THIN_BAR))
 
-        print("%sThe program will search Internet first. "
-              "This may take some time%s" % (THIN_BAR, THIN_BAR))
+        logging.info("%sThe program will search Internet first. "
+                     "This may take some time%s" % (THIN_BAR, THIN_BAR))
 
         # Generate global cache dict for web and offline data
         get_cache(self.query_file, self.offline_data_file)
@@ -1404,7 +1427,8 @@ class Application(tk.Frame):
         q = Query(self.query_file, self.data_file)
         self.log_area.update_idletasks()
 
-        self.log_label_value.set('Start doing multi-querying ...')
+        self.log_label_value.set('Start doing multi-querying ... '
+                                 'Please wait...')
         out_tuple_list = q.do_multi_query()
         self.log_area.update_idletasks()
 
