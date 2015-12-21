@@ -46,6 +46,7 @@ import re
 import os
 import bs4
 import sys
+import time
 import logging
 import sqlite3
 import openpyxl
@@ -1038,6 +1039,7 @@ def main():
         args.query_file,
         args.data_file,
         args.output_file)
+    time_start = time.time()
     # Data validation before program run
     data_validation(offline_data_file, query_file)
 
@@ -1045,6 +1047,8 @@ def main():
     out_tuple_list = q.do_multi_query()
     write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=output_file)
     write_to_sqlite3(out_tuple_list)
+    time_end = time.time()
+    logging.info('Time used: %.4f' % (time_end - time_start))
 
 
 if __name__ == '__main__':
