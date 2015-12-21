@@ -1411,8 +1411,8 @@ class Application(tk.Frame):
         self.log_label_value.set('Starting writing outcome to xlsx file ...')
         write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=out_xlsx_file)
 
-        self.log_label_value.set('Starting writing to SQLite3 file ...')
-        write_to_sqlite3(out_tuple_list, sqlite3_file=out_sqlite3_file)
+        # self.log_label_value.set('Starting writing to SQLite3 file ...')
+        # write_to_sqlite3(out_tuple_list, sqlite3_file=out_sqlite3_file)
         time_end = time.time()
         self.log_label_value.set('Job finished. Time used: %.2f seconds' %
                                  (time_end-time_start))
@@ -1434,7 +1434,7 @@ def main():
     q = Query(query_file, offline_data_file)
     out_tuple_list = q.do_multi_query()
     write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=output_file)
-    write_to_sqlite3(out_tuple_list)
+    # write_to_sqlite3(out_tuple_list)
 
 
 def gui_main():
