@@ -105,8 +105,7 @@ DEFAULT_LATIN_NAME_FILE_2 = os.path.join('.', 'data',
                                          'latin_names_only_head_and_tail.txt')
 
 # logging
-file_handler_format = ('[%(levelname)s]'
-                       '   %(message)s')
+file_handler_format = ('%(message)s')
 logging.basicConfig(level=logging.DEBUG,
                     format=file_handler_format,
                     datefmt="%Y-%m-%d %H:%M",
