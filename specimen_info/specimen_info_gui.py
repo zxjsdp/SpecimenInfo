@@ -149,6 +149,7 @@ _xlsx_data_cache_dict = {}
 BAR = '\n' + '=' * 60 + '\n'
 THIN_BAR = '\n' + '-' * 60 + '\n'
 LINE_SPLITER = '-' * 50
+THIN_BAR_NO_NEWLINE = '-' * 60
 
 
 # logging
@@ -450,9 +451,8 @@ class WebInfo(object):
                 logging.info('    [   INFO  ]      species:  |  %s' % species)
                 logging.info('    [   INFO  ]        namer:  |  %s' % namer)
         except IndexError as e:
-            logging.error("  * [  ERROR  ]  Cannot get namer from Internet. ")
-            logging.error("                 Please check species name.")
-            logging.error("       INFO      %s" % e)
+            logging.error("  * [  ERROR  ]  Cannot get namer from Internet for"
+                          " species name: %s" % self.species_name)
             namer = ""
 
         # Get habitat (TODO.)
@@ -970,8 +970,9 @@ def data_validation(data_file, query_file):
                                  for row in query_file_tuple_list]
 
     logging.info(BAR)
+    logging.info(" == DATA VALIDATION ==")
     # Check if number of lines of data file is correct
-    logging.info(THIN_BAR)
+    logging.info(THIN_BAR_NO_NEWLINE)
     logging.info('[ Start ] Validating if number of lines in data file is '
                  'correct...')
     if len(data_file_tuple_list[0]) != DATA_FILE_COLUMN_NUM:
@@ -982,7 +983,7 @@ def data_validation(data_file, query_file):
         raise ValueError('Please check data file.')
 
     # Check if number of lines of query file is correct
-    logging.info(THIN_BAR)
+    logging.info(THIN_BAR_NO_NEWLINE)
     logging.info('[ Start ] Validating if number of lines in query file is '
                  'correct...')
     if len(query_file_tuple_list[0]) != QUERY_FILE_COLUMN_NUM:
@@ -992,8 +993,49 @@ def data_validation(data_file, query_file):
             (QUERY_FILE_COLUMN_NUM, len(query_file_tuple_list[0])))
         raise ValueError('Please check query file.')
 
+    # Check if latin name is missing in data file
+    logging.info(THIN_BAR_NO_NEWLINE)
+    logging.info('[ Start ] Checking if latin name is missing in data file...')
+    for i, row in enumerate(data_file_tuple_list[1:]):
+        if not row[2].strip():
+            logging.error(
+                '[ ERROR ] No latin name in data file:  %s (Row: %s)' %
+                (data_file, i+1))
+        # raise ValueError('Please check data file.')
+
+    # Check if latin name is missing in query file
+    logging.info(THIN_BAR_NO_NEWLINE)
+    logging.info('[ Start ] Checking if latin name is missing in '
+                 'query file...')
+    for i, row in enumerate(query_file_tuple_list):
+        if not row[2].strip():
+            logging.error(
+                '[ ERROR ] No latin name in query file:  %s  (Row: %s)' %
+                (query_file, i+1))
+        # raise ValueError('Please check query file.')
+
+    # Check if is there any missing cell in data file
+    logging.info(THIN_BAR_NO_NEWLINE)
+    logging.info('[ Start ] Checking if any missing cell in data file...')
+    for i, row in enumerate(data_file_tuple_list):
+        for j, cell in enumerate(row):
+            if not cell:
+                logging.warning(
+                    '[ WARNING ] Blank cell: [%s:  Row: %s, Column: %s]' %
+                    (data_file, i+1, j+1))
+
+    # Check if is there any missing cell in query file
+    logging.info(THIN_BAR_NO_NEWLINE)
+    logging.info('[ Start ] Checking if any missing cell in query file...')
+    for i, row in enumerate(query_file_tuple_list):
+        for j, cell in enumerate(row):
+            if not cell:
+                logging.warning(
+                    '[ WARNING ] Blank cell: [%s:  Row: %s, Column: %s]' %
+                    (query_file, i+1, j+1))
+
     # Check if latin names in query file in data file
-    logging.info(THIN_BAR)
+    logging.info(THIN_BAR_NO_NEWLINE)
     logging.info('[ Start ] Validating if latin names (in query file) in '
                  'data file...')
     tmp_latin_name_set = set([])
@@ -1003,10 +1045,9 @@ def data_validation(data_file, query_file):
             if latin_name not in tmp_latin_name_set:
                 tmp_latin_name_set.add(latin_name)
                 logging.warning(
-                    '    [ WARNING ] Latin name not in data file:  '
-                    '[%s: Line %s]  %s' %
+                    '[ WARNING ] [%s:  Line %s]  %s  ' %
                     (query_file, i+1, latin_name))
-    logging.info(THIN_BAR)
+    logging.info(THIN_BAR_NO_NEWLINE)
 
     # Check if Latin names in built-in Latin name list
     try:
@@ -1024,27 +1065,25 @@ def data_validation(data_file, query_file):
             'was found: %s. (%s)' % (DEFAULT_LATIN_NAME_FILE, e))
     else:
         logging.info('[ Start ] Validating if latin names from data file in '
-                     'built-in latin name list')
+                     'built-in latin name list...')
         tmp_warning_set = set([])
         for i, latin_name in enumerate(latin_names_in_data_file):
             if latin_name not in default_latin_names:
                 if latin_name not in tmp_warning_set:
                     tmp_warning_set.add(latin_name)
                     logging.warning(
-                        '    [ WARNING ] Not in built-in Latin name list:  '
-                        '[%s: Line %s]  %s' %
+                        '[ WARNING ] [%s:  Line %s]  %s  ' %
                         (data_file, i+1, latin_name))
-        logging.info(THIN_BAR)
+        logging.info(THIN_BAR_NO_NEWLINE)
         logging.info('[ Start ] Validating if latin names from query file in'
-                     ' built-in latin name list')
+                     ' built-in latin name list...')
         tmp_warning_set = set([])
         for i, latin_name in enumerate(latin_names_in_query_file):
             if latin_name not in default_latin_names:
                 if latin_name not in tmp_warning_set:
                     tmp_warning_set.add(latin_name)
                     logging.warning(
-                        '    [ WARNING ] Not in built-in Latin name list:  '
-                        '[%s: Line %s]  %s' %
+                        '[ WARNING ] [%s:  Line %s]  %s  ' %
                         (query_file, i+1, latin_name))
     logging.info(BAR)
 
@@ -1387,7 +1426,10 @@ def main():
         args.data_file,
         args.output_file)
     # Data validation before program run
-    data_validation(offline_data_file, query_file)
+    try:
+        data_validation(offline_data_file, query_file)
+    except Exception as e:
+        logging.error('Cannot do data validation. Skip validation... %s' % e)
 
     q = Query(query_file, offline_data_file)
     out_tuple_list = q.do_multi_query()
