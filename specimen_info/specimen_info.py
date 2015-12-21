@@ -1088,7 +1088,7 @@ def main():
     q = Query(query_file, offline_data_file)
     out_tuple_list = q.do_multi_query()
     write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=output_file)
-    write_to_sqlite3(out_tuple_list)
+    # write_to_sqlite3(out_tuple_list)
     time_end = time.time()
     logging.info('Time used: %.4f' % (time_end - time_start))
 
