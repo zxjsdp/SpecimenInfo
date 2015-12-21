@@ -57,7 +57,7 @@ from collections import namedtuple
 from multiprocessing.dummy import Pool
 
 
-__version__ = "v1.2.0"
+__version__ = "v1.2.1"
 
 
 # ==================================================
