@@ -6,6 +6,11 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.2.2
+--------------
+
+- Make log.txt clearer.
+
 Version v1.2.1
 --------------
 
