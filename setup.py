@@ -9,7 +9,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='SpecimenInfo',
-    version='1.1.8',
+    version='1.1.9',
     description=('Fetch and format plant specimen informations from data file'
                  ' and web, save outcome to xlsx file and SQLite3 db file.'),
     author='Haofei Jin',
