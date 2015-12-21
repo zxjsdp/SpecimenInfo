@@ -6,6 +6,12 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.1.10
+--------------
+
+- Do not write to SQLite3 file default.
+- Add xlsx and csv files to .gitignore.
+
 Version v1.1.9
 --------------
 
