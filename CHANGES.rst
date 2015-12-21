@@ -6,6 +6,11 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.2.0
+--------------
+
+- Add local JSON cache for web info. This will make user experience much better.
+
 Version v1.1.10
 --------------
 
