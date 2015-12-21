@@ -46,6 +46,7 @@ import re
 import os
 import bs4
 import sys
+import time
 import logging
 import sqlite3
 import openpyxl
@@ -1352,6 +1353,8 @@ class Application(tk.Frame):
         logging.info("    [ SQLite3 file ]  %s%s"
                      % (out_sqlite3_file, THIN_BAR))
 
+        time_start = time.time()
+
         # Data validation
         self.log_label_value.set('Start validating data ...')
         data_validation(data_file=self.data_file, query_file=self.query_file)
@@ -1371,8 +1374,9 @@ class Application(tk.Frame):
 
         self.log_label_value.set('Starting writing to SQLite3 file ...')
         write_to_sqlite3(out_tuple_list, sqlite3_file=out_sqlite3_file)
-        self.log_label_value.set('Job finished. Please see log.txt for '
-                                 'more information.')
+        time_end = time.time()
+        self.log_label_value.set('Job finished. Time used: %.2f seconds' %
+                                 (time_end-time_start))
 
 
 def main():
