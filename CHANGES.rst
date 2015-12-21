@@ -6,6 +6,11 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.2.1
+--------------
+
+- Add log.txt and web_cache.json to .gitignore.
+
 Version v1.2.0
 --------------
 
