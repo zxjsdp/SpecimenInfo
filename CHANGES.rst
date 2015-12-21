@@ -6,6 +6,12 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.1.9
+--------------
+
+- Add more data validation.
+- Add time used information after program run.
+
 Version v1.1.8
 --------------
 
