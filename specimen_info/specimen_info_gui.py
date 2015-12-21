@@ -149,6 +149,7 @@ _xlsx_data_cache_dict = {}
 BAR = '\n' + '=' * 60 + '\n'
 THIN_BAR = '\n' + '-' * 60 + '\n'
 LINE_SPLITER = '-' * 50
+THIN_BAR_NO_NEWLINE = '-' * 60
 
 
 # logging
@@ -450,9 +451,8 @@ class WebInfo(object):
                 logging.info('    [   INFO  ]      species:  |  %s' % species)
                 logging.info('    [   INFO  ]        namer:  |  %s' % namer)
         except IndexError as e:
-            logging.error("  * [  ERROR  ]  Cannot get namer from Internet. ")
-            logging.error("                 Please check species name.")
-            logging.error("       INFO      %s" % e)
+            logging.error("  * [  ERROR  ]  Cannot get namer from Internet for"
+                          " species name: %s" % self.species_name)
             namer = ""
 
         # Get habitat (TODO.)
@@ -971,7 +971,7 @@ def data_validation(data_file, query_file):
 
     logging.info(BAR)
     # Check if number of lines of data file is correct
-    logging.info(THIN_BAR)
+    logging.info(THIN_BAR_NO_NEWLINE)
     logging.info('[ Start ] Validating if number of lines in data file is '
                  'correct...')
     if len(data_file_tuple_list[0]) != DATA_FILE_COLUMN_NUM:
@@ -982,7 +982,7 @@ def data_validation(data_file, query_file):
         raise ValueError('Please check data file.')
 
     # Check if number of lines of query file is correct
-    logging.info(THIN_BAR)
+    logging.info(THIN_BAR_NO_NEWLINE)
     logging.info('[ Start ] Validating if number of lines in query file is '
                  'correct...')
     if len(query_file_tuple_list[0]) != QUERY_FILE_COLUMN_NUM:
@@ -993,9 +993,9 @@ def data_validation(data_file, query_file):
         raise ValueError('Please check query file.')
 
     # Check if latin names in query file in data file
-    logging.info(THIN_BAR)
+    logging.info(THIN_BAR_NO_NEWLINE)
     logging.info('[ Start ] Validating if latin names (in query file) in '
-                 'data file...')
+                 'data file...\n')
     tmp_latin_name_set = set([])
     latin_names_set_from_data_file = set(latin_names_in_data_file)
     for i, latin_name in enumerate(latin_names_in_query_file):
@@ -1003,10 +1003,10 @@ def data_validation(data_file, query_file):
             if latin_name not in tmp_latin_name_set:
                 tmp_latin_name_set.add(latin_name)
                 logging.warning(
-                    '    [ WARNING ] Latin name not in data file:  '
-                    '[%s: Line %s]  %s' %
-                    (query_file, i+1, latin_name))
-    logging.info(THIN_BAR)
+                    '[ WARNING ] Latin name not in data file:  %s\n' %
+                    latin_name +
+                    '            %s:  Line %s' % (query_file, i+1))
+    logging.info(THIN_BAR_NO_NEWLINE)
 
     # Check if Latin names in built-in Latin name list
     try:
@@ -1024,28 +1024,28 @@ def data_validation(data_file, query_file):
             'was found: %s. (%s)' % (DEFAULT_LATIN_NAME_FILE, e))
     else:
         logging.info('[ Start ] Validating if latin names from data file in '
-                     'built-in latin name list')
+                     'built-in latin name list...\n')
         tmp_warning_set = set([])
         for i, latin_name in enumerate(latin_names_in_data_file):
             if latin_name not in default_latin_names:
                 if latin_name not in tmp_warning_set:
                     tmp_warning_set.add(latin_name)
                     logging.warning(
-                        '    [ WARNING ] Not in built-in Latin name list:  '
-                        '[%s: Line %s]  %s' %
-                        (data_file, i+1, latin_name))
-        logging.info(THIN_BAR)
+                        '[ WARNING ] Not in built-in Latin name list:  %s\n' %
+                        latin_name +
+                        '            %s:  Line %s' % (data_file, i+1))
+        logging.info(THIN_BAR_NO_NEWLINE)
         logging.info('[ Start ] Validating if latin names from query file in'
-                     ' built-in latin name list')
+                     ' built-in latin name list...\n')
         tmp_warning_set = set([])
         for i, latin_name in enumerate(latin_names_in_query_file):
             if latin_name not in default_latin_names:
                 if latin_name not in tmp_warning_set:
                     tmp_warning_set.add(latin_name)
                     logging.warning(
-                        '    [ WARNING ] Not in built-in Latin name list:  '
-                        '[%s: Line %s]  %s' %
-                        (query_file, i+1, latin_name))
+                        '[ WARNING ] Not in built-in Latin name list:  %s\n' %
+                        latin_name +
+                        '            %s:  Line %s' % (query_file, i+1))
     logging.info(BAR)
 
 
