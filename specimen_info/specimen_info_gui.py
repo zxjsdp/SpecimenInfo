@@ -1387,7 +1387,10 @@ def main():
         args.data_file,
         args.output_file)
     # Data validation before program run
-    data_validation(offline_data_file, query_file)
+    try:
+        data_validation(offline_data_file, query_file)
+    except Exception as e:
+        logging.error('Cannot do data validation. Skip validation... %s' % e)
 
     q = Query(query_file, offline_data_file)
     out_tuple_list = q.do_multi_query()
