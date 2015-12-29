@@ -956,13 +956,58 @@ def data_validation(data_file, query_file):
     # Get file tuple list
     data_file_tuple_list = XlsxFile(data_file).xlsx_matrix
     query_file_tuple_list = XlsxFile(query_file).xlsx_matrix
-    latin_names_in_data_file = [row[2].strip()
-                                for row in data_file_tuple_list[1:]]
-    latin_names_in_query_file = [row[2].strip()
-                                 for row in query_file_tuple_list]
 
     logging.info(BAR)
     logging.info(" == DATA VALIDATION ==")
+
+    critical_error = False
+
+    # Check if latin name is missing in data file
+    logging.info(THIN_BAR_NO_NEWLINE)
+    logging.info('[ Start ] Checking if latin name is missing in '
+                 'data file...')
+    latin_names_in_data_file = []
+    for i, each_tuple in enumerate(data_file_tuple_list[1:]):
+        # If line is blank line, skip
+        try:
+            if not each_tuple[0] and not each_tuple[2]:
+                continue
+        except Exception as e:
+            logging.error('Line %s: %s' % (i+1, e))
+        if each_tuple[2]:
+            latin_names_in_data_file.append(each_tuple[2].strip())
+        else:
+            logging.error(
+                '[ ERROR ] No latin name:  %s (Row: %s)' %
+                (data_file, i+1))
+            critical_error = True
+
+    # Check if latin name is missing in query file
+    logging.info(THIN_BAR_NO_NEWLINE)
+    logging.info('[ Start ] Checking if latin name is missing in '
+                 'query file...')
+    latin_names_in_query_file = []
+    for i, each_tuple in enumerate(query_file_tuple_list):
+        # If line is blank line, skip
+        try:
+            if not each_tuple[0] and not each_tuple[2]:
+                continue
+        except Exception as e:
+            logging.error('Line %s: %s' % (i+1, e))
+        if each_tuple[2]:
+            latin_names_in_query_file.append(each_tuple[2].strip())
+        else:
+            logging.error(
+                '[ ERROR ] No latin name:  %s (Row: %s)' %
+                (query_file, i+1))
+            critical_error = True
+
+    if critical_error:
+        logging.error(
+            '[ ERROR ] Please make sure latin names are not missing '
+            'in either data or query files.')
+        raise ValueError()
+
     # Check if number of lines of data file is correct
     logging.info(THIN_BAR_NO_NEWLINE)
     logging.info('[ Start ] Validating if number of lines in data file is '
@@ -983,28 +1028,7 @@ def data_validation(data_file, query_file):
             '[ ERROR ] Number of columns in query file '
             'should be: %s (now: %s)' %
             (QUERY_FILE_COLUMN_NUM, len(query_file_tuple_list[0])))
-        raise ValueError('Please check query file.')
-
-    # Check if latin name is missing in data file
-    logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Checking if latin name is missing in data file...')
-    for i, row in enumerate(data_file_tuple_list[1:]):
-        if not row[2].strip():
-            logging.error(
-                '[ ERROR ] No latin name in data file:  %s (Row: %s)' %
-                (data_file, i+1))
-        # raise ValueError('Please check data file.')
-
-    # Check if latin name is missing in query file
-    logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Checking if latin name is missing in '
-                 'query file...')
-    for i, row in enumerate(query_file_tuple_list):
-        if not row[2].strip():
-            logging.error(
-                '[ ERROR ] No latin name in query file:  %s  (Row: %s)' %
-                (query_file, i+1))
-        # raise ValueError('Please check query file.')
+        raise ValueError('Please check query file')
 
     # Check if is there any missing cell in data file
     logging.info(THIN_BAR_NO_NEWLINE)
@@ -1041,42 +1065,42 @@ def data_validation(data_file, query_file):
                     (query_file, i+1, latin_name))
     logging.info(THIN_BAR_NO_NEWLINE)
 
-    # Check if Latin names in built-in Latin name list
-    try:
-        with open(DEFAULT_LATIN_NAME_FILE, 'r') as f:
-            default_latin_names_list_1 = [x.strip() for x in f.readlines()
-                                          if x.strip()]
-        with open(DEFAULT_LATIN_NAME_FILE_2, 'r') as f:
-            default_latin_names_list_2 = [x.strip() for x in f.readlines()
-                                          if x.strip()]
-        default_latin_names = set(default_latin_names_list_1
-                                  + default_latin_names_list_2)
-    except IOError as e:
-        logging.warning(
-            'Pass latin name check because no built-in latin name file '
-            'was found: %s. (%s)' % (DEFAULT_LATIN_NAME_FILE, e))
-    else:
-        logging.info('[ Start ] Validating if latin names from data file in '
-                     'built-in latin name list...')
-        tmp_warning_set = set([])
-        for i, latin_name in enumerate(latin_names_in_data_file):
-            if latin_name not in default_latin_names:
-                if latin_name not in tmp_warning_set:
-                    tmp_warning_set.add(latin_name)
-                    logging.warning(
-                        '[ WARNING ] [%s:  Line %s]  %s  ' %
-                        (data_file, i+1, latin_name))
-        logging.info(THIN_BAR_NO_NEWLINE)
-        logging.info('[ Start ] Validating if latin names from query file in'
-                     ' built-in latin name list...')
-        tmp_warning_set = set([])
-        for i, latin_name in enumerate(latin_names_in_query_file):
-            if latin_name not in default_latin_names:
-                if latin_name not in tmp_warning_set:
-                    tmp_warning_set.add(latin_name)
-                    logging.warning(
-                        '[ WARNING ] [%s:  Line %s]  %s  ' %
-                        (query_file, i+1, latin_name))
+    # # Check if Latin names in built-in Latin name list
+    # try:
+    #     with open(DEFAULT_LATIN_NAME_FILE, 'r') as f:
+    #         default_latin_names_list_1 = [x.strip() for x in f.readlines()
+    #                                       if x.strip()]
+    #     with open(DEFAULT_LATIN_NAME_FILE_2, 'r') as f:
+    #         default_latin_names_list_2 = [x.strip() for x in f.readlines()
+    #                                       if x.strip()]
+    #     default_latin_names = set(default_latin_names_list_1
+    #                               + default_latin_names_list_2)
+    # except IOError as e:
+    #     logging.warning(
+    #         'Pass latin name check because no built-in latin name file '
+    #         'was found: %s. (%s)' % (DEFAULT_LATIN_NAME_FILE, e))
+    # else:
+    #     logging.info('[ Start ] Validating if latin names from data file in '
+    #                  'built-in latin name list...')
+    #     tmp_warning_set = set([])
+    #     for i, latin_name in enumerate(latin_names_in_data_file):
+    #         if latin_name not in default_latin_names:
+    #             if latin_name not in tmp_warning_set:
+    #                 tmp_warning_set.add(latin_name)
+    #                 logging.warning(
+    #                     '[ WARNING ] [%s:  Line %s]  %s  ' %
+    #                     (data_file, i+1, latin_name))
+    #     logging.info(THIN_BAR_NO_NEWLINE)
+    #     logging.info('[ Start ] Validating if latin names from query file in'
+    #                  ' built-in latin name list...')
+    #     tmp_warning_set = set([])
+    #     for i, latin_name in enumerate(latin_names_in_query_file):
+    #         if latin_name not in default_latin_names:
+    #             if latin_name not in tmp_warning_set:
+    #                 tmp_warning_set.add(latin_name)
+    #                 logging.warning(
+    #                     '[ WARNING ] [%s:  Line %s]  %s  ' %
+    #                     (query_file, i+1, latin_name))
     logging.info(BAR)
 
 
