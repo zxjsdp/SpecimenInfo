@@ -798,9 +798,6 @@ class Query(object):
         logging.info("%sThe program will search Internet first. "
                      "This may take some time%s" % (THIN_BAR, THIN_BAR))
 
-        logging.info("%sThe program will search Internet first. "
-                     "This may take some time%s" % (THIN_BAR, THIN_BAR))
-
         # Generate global cache dict for web and offline data
         get_cache(self.query_file, self.offline_data_file)
 
