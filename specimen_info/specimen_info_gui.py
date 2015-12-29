@@ -323,7 +323,7 @@ class WebInfo(object):
         if len(self.species_name.split()) == 2:
             genus, species = self.species_name.split()
         else:
-            logging.warning("   [ WARNING ]  Is this llegal species name?"
+            logging.warning("    [ WARNING ]  Is this llegal species name?"
                             " -->  %s" % self.species_name)
             genus, blank, species = [
                 _.strip() for _ in self.species_name.partition(' ')]
@@ -442,8 +442,13 @@ class WebInfo(object):
         """Format infos from web."""
 
         # Get genus, species, namer
-        genus, species = self.species_name.split()[0],\
-            self.species_name.split()[1]
+        if not self.species_name:
+            return ['' for x in range(11)]
+        if len(self.species_name.split()) >= 2:
+            genus, species = self.species_name.split()[0],\
+                self.species_name.split()[1]
+        else:
+            genus, species = self.species_name, ''
         re_namer = re.compile('(?<=<b>%s</b> <b>%s</b>)[^><]*(?=<span)'
                               % (genus, species))
         try:
@@ -461,9 +466,16 @@ class WebInfo(object):
         habitat = ''
 
         # Get height, DBH, stem, leaf, flower, fruit, host
-        (height_list, DBH_list, stem_list, leaf_list,
-         flower_list, fruit_list, host_list) = \
-            self._get_target_info()
+        try:
+            (height_list, DBH_list, stem_list, leaf_list,
+             flower_list, fruit_list, host_list) = \
+                self._get_target_info()
+        except Exception as e:
+            logging.error(
+                'Cannot get height, DBH, stem, ... for %s. (%s)' %
+                (self.species_name, e))
+            (height_list, DBH_list, stem_list, leaf_list,
+             flower_list, fruit_list, host_list) = ['' for x in range(7)]
 
         web_info_tuple = (
             genus, species, namer,
@@ -492,8 +504,12 @@ class WebInfoCacheMultithreading(object):
     def _single_query(self, one_species_name):
         global _web_data_cache_dict
 
-        pretty_info_tuple = WebInfo(one_species_name).pretty_info_tuple
-        _web_data_cache_dict[one_species_name] = pretty_info_tuple
+        try:
+            pretty_info_tuple = WebInfo(one_species_name).pretty_info_tuple
+            _web_data_cache_dict[one_species_name] = pretty_info_tuple
+        except Exception as e:
+            logging.error('Cannot get info from web: %s (%s)' %
+                          (one_species_name, e))
 
     def get_web_dict_multithreading(self):
         if POOL_NUM > 1 and POOL_NUM < 50:
@@ -568,6 +584,8 @@ class Query(object):
 
         serial_number, barcode, species_name, same_species_num = \
             one_query_tuple
+        if not species_name:
+            return ['' for x in range(11)], None
         species_name = " ".join(species_name.split())
 
         # ===============================================================
@@ -578,7 +596,14 @@ class Query(object):
             if SHOW_GARBAGE_LOG:
                 logging.info("    [ Web  Info ]  Use Cache")
         else:
-            web_info_tuple = None
+            if len(one_query_tuple[2].split()) >= 2:
+                web_info_tuple = tuple([
+                    one_query_tuple[2].split()[0],
+                    ' '.join(one_query_tuple[2].split()[1:])]
+                    + ['' for x in range(9)])
+            else:
+                web_info_tuple = tuple([one_query_tuple[2]]
+                                       + ['' for x in range(10)])
 
         # ===============================================================
         # Offline Data Cache
@@ -747,6 +772,9 @@ class Query(object):
         except Exception as e:
             logging.warning("Skip... Cannot get info from web for:  %s. %s" %
                             (one_query_tuple[2], e))
+            genus = one_query_tuple[2].split()[0]
+            species, namer, habitat, body_height, DBH, stem, leaf, \
+                flower, fruit, host = ['' for x in range(10)]
 
         f = FinalInfo(
             library_code=library_code,
@@ -1415,7 +1443,7 @@ class Application(tk.Frame):
 
         # Data validation
         self.log_label_value.set('Start validating data ...')
-        data_validation(data_file=self.data_file, query_file=self.query_file)
+        # data_validation(data_file=self.data_file, query_file=self.query_file)
         self.log_area.update_idletasks()
 
         self.log_label_value.set('Start preparing querying ... '
