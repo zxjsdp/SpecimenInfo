@@ -6,6 +6,15 @@ Next Release
 
 Will be released in the near future...
 
+Version v1.3.0
+--------------
+
+- Fix program stuck if data is not clean
+- Add data validation of blank latin name in data and query file
+- Add data validation for at least two words for latin names
+- Fix tow tips lines
+- Fix tuple element bug
+
 Version v1.2.2
 --------------
 
