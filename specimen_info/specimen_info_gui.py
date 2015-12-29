@@ -746,7 +746,7 @@ class Query(object):
             host = web_info_tuple[10]
         except Exception as e:
             logging.warning("Skip... Cannot get info from web for:  %s. %s" %
-                            (one_query_tuple(2), e))
+                            (one_query_tuple[2], e))
 
         f = FinalInfo(
             library_code=library_code,
