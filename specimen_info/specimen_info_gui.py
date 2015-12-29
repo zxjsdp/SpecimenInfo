@@ -1030,6 +1030,13 @@ def data_validation(data_file, query_file):
         except Exception as e:
             logging.error('Line %s: %s' % (i+1, e))
         if each_tuple[2]:
+            latin_name = each_tuple[2]
+            if len(latin_name.split()) < 2:
+                logging.error(
+                    '[ ERROR ] Latin name at least two words: genus+'
+                    'species. Line %s: %s' %
+                    (i+1, latin_name))
+                critical_error = True
             latin_names_in_data_file.append(each_tuple[2].strip())
         else:
             logging.error(
@@ -1050,6 +1057,13 @@ def data_validation(data_file, query_file):
         except Exception as e:
             logging.error('Line %s: %s' % (i+1, e))
         if each_tuple[2]:
+            latin_name = each_tuple[2]
+            if len(latin_name.split()) < 2:
+                logging.error(
+                    '[ ERROR ] Latin name at least two words: genus+'
+                    'species. Line %s: %s' %
+                    (i+1, latin_name))
+                critical_error = True
             latin_names_in_query_file.append(each_tuple[2].strip())
         else:
             logging.error(
