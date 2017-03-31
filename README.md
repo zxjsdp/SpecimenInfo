@@ -18,8 +18,18 @@ You need to prepare two xlsx files to run this program.
 Please download sample file for more details.
 
 
+Prerequisites
+-------------
+
+- For Windows users, you need to install [Python](https://www.python.org/) before running this program.
+- Install requirements:
+
+      pip install -U requests beautifulsoup4 openpyxl
+
+
 Usage
 -----
+
 1. For quick use, you can download `specimen_info_gui.py` and double click.
    You will get a graphical user interface.
 
@@ -79,7 +89,7 @@ Qeury File and Data File Format
     4. 同一物种编号
 
 2. Data file
-    
+
     You need these information for data xlsx file:
 
     1. 物种编号
