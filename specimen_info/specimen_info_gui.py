@@ -1370,12 +1370,11 @@ class Application(tk.Frame):
         self.log_label_value.set('Starting job ...')
 
         out_xlsx_file = self.out_file_entry.get().strip()
-        out_sqlite3_file = "specimen_sqlite3.sqlite"
 
         logging.info("Plant Speciem Info Input Program:%s" % BAR)
-        if any([self.query_file == "query.xlsx", self.data_file == 'data.xlsx',
-               out_xlsx_file == 'output.xslx',
-               out_sqlite3_file == "speciemen.sqlite"]):
+        if any([self.query_file == "query.xlsx",
+                self.data_file == 'data.xlsx',
+                out_xlsx_file == 'output.xslx']):
             logging.warning("You are using one or more default name(s).")
 
         self.log_area.update_idletasks()
@@ -1383,8 +1382,6 @@ class Application(tk.Frame):
                      % (THIN_BAR, self.query_file))
         logging.info("    [   Data file  ]  %s" % self.data_file)
         logging.info("    [ xlsx Outfile ]  %s" % out_xlsx_file)
-        logging.info("    [ SQLite3 file ]  %s%s"
-                     % (out_sqlite3_file, THIN_BAR))
 
         time_start = time.time()
 
@@ -1406,8 +1403,6 @@ class Application(tk.Frame):
         self.log_label_value.set('Starting writing outcome to xlsx file ...')
         write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=out_xlsx_file)
 
-        # self.log_label_value.set('Starting writing to SQLite3 file ...')
-        # write_to_sqlite3(out_tuple_list, sqlite3_file=out_sqlite3_file)
         time_end = time.time()
         self.log_label_value.set('Job finished. Time used: %.2f seconds' %
                                  (time_end-time_start))
@@ -1429,7 +1424,6 @@ def main():
     q = Query(query_file, offline_data_file)
     out_tuple_list = q.do_multi_query()
     write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=output_file)
-    # write_to_sqlite3(out_tuple_list)
 
 
 def gui_main():
