@@ -50,7 +50,6 @@ except ImportError:
 import sys
 import time
 import json
-import Queue
 import logging
 try:
     import openpyxl
@@ -69,10 +68,12 @@ if sys.version[0] == '2':
     import Tkinter as tk
     import ttk
     import ScrolledText as st
+    import Queue
 elif sys.version[0] == '3':
     import tkinter as tk
     from tkinter import ttk
     import tkinter.scrolledtext as st
+    import queue as Queue
 else:
     raise ImportError('Cannot identify your Python version.')
 
