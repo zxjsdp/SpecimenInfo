@@ -47,10 +47,12 @@ import bs4
 import sys
 import time
 import json
+import Queue
 import logging
 import openpyxl
 import requests
 import argparse
+import threading
 from collections import namedtuple
 from multiprocessing.dummy import Pool
 
@@ -486,12 +488,11 @@ class WebInfo(object):
         try:
             namer = re_namer.findall(self.response)[0].strip()
             if SHOW_GARBAGE_LOG:
-                logging.info('    [   INFO  ]        genus:  |  %s' % genus)
-                logging.info('    [   INFO  ]      species:  |  %s' % species)
-                logging.info('    [   INFO  ]        namer:  |  %s' % namer)
+                logging.info('    [   INFO  ]        genus:  |  %s（属）' % genus)
+                logging.info('    [   INFO  ]      species:  |  %s（种）' % species)
+                logging.info('    [   INFO  ]       people:  |  %s（命名人）' % namer)
         except IndexError as e:
-            logging.error("  * [  ERROR  ]  Cannot get namer from Internet for"
-                          " species name: %s" % self.species_name)
+            logging.error("  * [ WARNING ]  无法从网络获取命名人：{}".format(self.species_name))
             namer = ""
 
         # Get habitat (TODO.)
@@ -527,7 +528,7 @@ class WebInfoCacheMultithreading(object):
     def _get_non_repeatitive_species_name_list(self):
         query_tuple_list = QueryParser(self.query_file).query_tuple
         non_repeatitive_species_name_list = list(
-            set([_[2] for _ in query_tuple_list]))
+            set([_[3] for _ in query_tuple_list]))
         if SHOW_GARBAGE_LOG:
             logging.info("     None repeatitive species name number:  %d"
                          % len(non_repeatitive_species_name_list))
@@ -561,8 +562,8 @@ class WebInfoCacheMultithreading(object):
             species_in_local_json_cache = []
             local_web_cache_dict = {}
         species_not_in_cache = list(
-            set(self.non_repeatitive_species_name_list)
-                .difference(set(species_in_local_json_cache)))
+            set(self.non_repeatitive_species_name_list).difference(
+                set(species_in_local_json_cache)))
         pool.map(self._single_query, species_not_in_cache)
         _web_data_cache_dict.update(local_web_cache_dict)
         with open(LOCAL_JSON_CACHE_FILE, 'wb') as f:
@@ -802,8 +803,8 @@ class Query(object):
             fruit = web_info_tuple[9]
             host = web_info_tuple[10]
         except Exception as e:
-            logging.warning("Skip... Cannot get info from web for:  %s. %s" %
-                            (one_query_tuple[2], e))
+            # logging.warning("Skip... Cannot get info from web for:  %s. %s" %
+            #                 (one_query_tuple[2], e))
             name = one_query_tuple[3]
             genus = name.split()[0] if name else ''
             species, namer, habitat, body_height, DBH, stem, leaf, \
@@ -864,16 +865,21 @@ class Query(object):
         logging.info("\n{}开始处理每一个物种 ...{}".format(THIN_BAR, THIN_BAR))
 
         # Do query for each entry
+        log_info = list()
         for i, each_query_tuple in enumerate(self.query_tuple_list):
-            logging.info("[ %d ]   %s\n" % (i + 1, each_query_tuple[2]))
-            logging.info("       采集号（{}）".format(each_query_tuple[0]))
-            logging.info("       流水号（{}）".format(each_query_tuple[1]))
-            logging.info("       条形码（{}）".format(each_query_tuple[2]))
-            logging.info("       物种名（{}）\n".format(each_query_tuple[3]))
+            if (i + 1) % 10 == 0:
+                logging.info('  {} - {} Done!'.format(i - 9, i + 1))
+            log_info.append(
+                "[ {} ] {}\n\n".format(i + 1, each_query_tuple[2]) +
+                "       采集号（{}）\n".format(each_query_tuple[0]) +
+                "       流水号（{}）\n".format(each_query_tuple[1]) +
+                "       条形码（{}）\n".format(str(each_query_tuple[2]).zfill(8)) +
+                "       物种名（{}）\n\n".format(each_query_tuple[3])
+            )
             out_tuple = self._formatted_single_output(each_query_tuple)
             out_tuple_list.append(out_tuple)
 
-        return out_tuple_list
+        return out_tuple_list, '\n'.join(log_info)
 
 
 def write_to_xlsx_file(out_tuple_list, xlsx_outfile_name="out.xlsx"):
@@ -1161,6 +1167,7 @@ class Application(tk.Frame):
         self.create_widgets()
         self.configure_layout()
         self.bind_command()
+        self.queue = Queue.Queue()
         self.data_file = ''
         self.query_file = ''
 
@@ -1367,27 +1374,50 @@ class Application(tk.Frame):
         logging.info("    [   Data file  ]  %s" % self.data_file)
         logging.info("    [ xlsx Outfile ]  %s" % out_xlsx_file)
 
+        ThreadedTask(self.data_file, self.query_file, out_xlsx_file, self.log_label_value, self.queue).start()
+        self.master.after(1000, self.process_queue)
+
+    def process_queue(self):
+        try:
+            log_info = self.queue.get(0)
+            logging.info(log_info)
+        except Queue.Empty:
+            print("blank")
+            self.master.after(1000, self.process_queue)
+
+
+class ThreadedTask(threading.Thread):
+    def __init__(self, data_file, query_file, output_file, log_label_widget, queue):
+        threading.Thread.__init__(self)
+        self.data_file = data_file
+        self.query_file = query_file
+        self.out_xlsx_file = output_file
+        self.log_label_value = log_label_widget
+        self.queue = queue
+
+    def run(self):
         time_start = time.time()
 
         # Data validation
         self.log_label_value.set('开始进行数据校验 ...')
         data_validation(data_file=self.data_file, query_file=self.query_file)
-        self.log_area.update_idletasks()
 
         self.log_label_value.set('开始进行预处理，请耐心等待 ... ')
-        q = Query(self.query_file, self.data_file)
-        self.log_area.update_idletasks()
+        query = Query(self.query_file, self.data_file)
 
-        self.log_label_value.set('开始进行多线程处理，请耐心等待 ... ')
-        out_tuple_list = q.do_multi_query()
-        self.log_area.update_idletasks()
+        self.log_label_value.set('开始进行多进程处理，请耐心等待 ... ')
+        out_tuple_list, log_info = query.do_multi_query()
 
-        self.log_label_value.set('将结果 {} 条记录写入到输出文件中；{} ...'.format(
-            len(out_tuple_list), out_xlsx_file))
-        write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=out_xlsx_file)
+        write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=self.out_xlsx_file)
+        write_result = '已将 {} 条记录写入到输出文件中；{}！'.format(
+            len(out_tuple_list), self.out_xlsx_file)
+        self.log_label_value.set(write_result)
+        log_info += '\n{}'.format(write_result)
 
         time_end = time.time()
         self.log_label_value.set('任务完成，共花费时间: %.2f 秒' % (time_end - time_start))
+
+        self.queue.put(log_info)
 
 
 def main():
@@ -1403,9 +1433,12 @@ def main():
     except Exception as e:
         logging.error('无法进行数据校验，跳过校验 ... （原因：%s）' % e)
 
-    q = Query(query_file, offline_data_file)
-    out_tuple_list = q.do_multi_query()
-    write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=output_file)
+    try:
+        q = Query(query_file, offline_data_file)
+        out_tuple_list, log_info = q.do_multi_query()
+        write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=output_file)
+    except KeyboardInterrupt as e:
+        raise
 
 
 def gui_main():
