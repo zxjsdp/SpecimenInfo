@@ -49,7 +49,6 @@ import sys
 import time
 import json
 import logging
-import sqlite3
 import openpyxl
 import requests
 import argparse
@@ -69,20 +68,51 @@ else:
 
 __version__ = "v1.3.0"
 
-__all__ = ['Query', 'write_to_xlsx_file', 'write_to_sqlite3',
-           'gui_main']
+__all__ = ['Query', 'write_to_xlsx_file', 'gui_main']
 
 
 # ==================================================
 # You can change settings here if needed
 # ==================================================
-DATA_FILE_COLUMN_NUM = 19
-QUERY_FILE_COLUMN_NUM = 4
 POOL_NUM = 30
 SHOW_GARBAGE_LOG = False
 
 LIBRARY_CODE = "FUS"
 COLLECTION_COUNTRY = "中国"
+
+# query 文件的列标题
+QUERY_FILE_HEADER_TUPLE = {
+    "物种编号",
+    "流水号",
+    "条形码",
+    "物种名（二名法）",
+    "同一物种编号"
+}
+
+# data 文件的列标题
+DATA_FILE_HEADER_TUPLE = (
+    "物种编号",
+    "中文名",
+    "种名（拉丁）",
+    "科名",
+    "科名（拉丁）",
+    "省",
+    "市",
+    "具体小地名",
+    "纬",
+    "东经",
+    "海拔",
+    "日期",
+    "份数",
+    "草灌",
+    "采集人",
+    "鉴定人",
+    "鉴定日期",
+    "录入员",
+    "录入日期"
+)
+
+# output 文件的列标题
 HEADER_TUPLE = (
     "馆代码", "流水号", "条形码", "模式类型", "库存", "标本状态",
     "采集人", "采集号", "采集日期", "国家", "省市", "区县", "海拔",
@@ -100,7 +130,7 @@ HEADER_TUPLE = (
 TOTAL_LINES = 38
 
 # Local JSON cache file name for web search
-LOCAL_JSON_CACHE_FILE = 'web_cache.json'
+LOCAL_JSON_CACHE_FILE = 'cache.json'
 
 # Dictionaries used for cache
 # Web data cache
@@ -199,7 +229,9 @@ class XlsxFile(object):
             logging.error(e)
             sys.exit(1)
 
-        self.ws = self.wb.get_active_sheet()
+        self.ws = self.wb.active
+        if not self.ws:
+            raise ValueError("无法获取 xlsx 文件中的 active sheet：{}".format(excel_file))
         self.ws_title = self.ws.title
         self.xlsx_matrix = []
         self.species_info_dict = {}
@@ -254,7 +286,7 @@ class XlsxFile(object):
             logging.info("[    Matrix Col Infos ]:  No. of Cols:  %d"
                          % len(self.xlsx_matrix[0]))
 
-    def get_xlsx_data_dict(self, key_column_index=2):
+    def get_xlsx_data_dict(self, key_column_index):
         """Return a dictionary with data from xlsx matrix.
 
         Key:     The Nth elements (namely: key_column_index).
@@ -549,8 +581,8 @@ class OfflineDataCache(object):
 
     def get_xlsx_data_dict(self):
         global _xlsx_data_cache_dict
-        _xlsx_data_cache_dict = \
-            XlsxFile(self.offline_data_file).get_xlsx_data_dict()
+        _xlsx_data_cache_dict = XlsxFile(
+            self.offline_data_file).get_xlsx_data_dict(key_column_index=0)
 
 
 def get_cache(query_file, offline_data_file):
@@ -582,8 +614,7 @@ class Query(object):
         global _web_data_cache_dict
         global _xlsx_data_cache_dict
 
-        serial_number, barcode, species_name, same_species_num = \
-            one_query_tuple
+        collection_id_prefix, serial_number, barcode, species_name, same_species_num = one_query_tuple
         if not species_name:
             return ['' for x in range(11)], None
         species_name = " ".join(species_name.split())
@@ -596,26 +627,26 @@ class Query(object):
             if SHOW_GARBAGE_LOG:
                 logging.info("    [ Web  Info ]  Use Cache")
         else:
-            if len(one_query_tuple[2].split()) >= 2:
+            if len(one_query_tuple[3].split()) >= 2:
                 web_info_tuple = tuple([
-                    one_query_tuple[2].split()[0],
-                    ' '.join(one_query_tuple[2].split()[1:])]
+                    one_query_tuple[3].split()[0],
+                    ' '.join(one_query_tuple[3].split()[1:])]
                     + ['' for x in range(9)])
             else:
-                web_info_tuple = tuple([one_query_tuple[2]]
-                                       + ['' for x in range(10)])
+                web_info_tuple = tuple([one_query_tuple[3]]
+                                       + ['' for _ in range(10)])
 
         # ===============================================================
         # Offline Data Cache
         # ===============================================================
-        if species_name in _xlsx_data_cache_dict:
-            offline_info_tuple = _xlsx_data_cache_dict[species_name]
+        if collection_id_prefix in _xlsx_data_cache_dict:
+            offline_info_tuple = _xlsx_data_cache_dict[collection_id_prefix]
             if SHOW_GARBAGE_LOG:
                 logging.info("    [ File Info ]  Use Cache")
         else:
             offline_info_tuple = None
 
-        return (web_info_tuple, offline_info_tuple)
+        return web_info_tuple, offline_info_tuple
 
     def _formatted_single_output(self, one_query_tuple):
         """Format raw results for single query."""
@@ -772,7 +803,8 @@ class Query(object):
         except Exception as e:
             logging.warning("Skip... Cannot get info from web for:  %s. %s" %
                             (one_query_tuple[2], e))
-            genus = one_query_tuple[2].split()[0]
+            name = one_query_tuple[3]
+            genus = name.split()[0] if name else ''
             species, namer, habitat, body_height, DBH, stem, leaf, \
                 flower, fruit, host = ['' for x in range(10)]
 
@@ -887,121 +919,6 @@ def write_to_xlsx_file(out_tuple_list, xlsx_outfile_name="out.xlsx"):
                         % alt_xlsx_outfile)
 
 
-def write_to_sqlite3(out_tuple_list, sqlite3_file="specimen.sqlite"):
-    """Write tuple list to sqlite3 file."""
-    create_sql = """create Table specimen (
-            id INTEGER PRIMARY KEY,
-            library_code NVARCHAR(10),
-            serial_number INTEGER NOT NULL,
-            barcode NVARCHAR(12) NOT NULL,
-            pattern_type NVARCHAR(50),
-            inventory INTEGER,
-            specimen_condition NVARCHAR(20),
-            collectors NVARCHAR(50),
-            collection_id NVARCHAR(20),
-            collection_date DATE,
-            collection_country NVARCHAR(20),
-            province_and_city NVARCHAR(50),
-            county NVARCHAR(30),
-            altitude INTEGER,
-            negative_altitude INTEGER,
-            family NVARCHAR(30),
-            genus NVARCHAR(30),
-            species NVARCHAR(30),
-            namer NVARCHAR(30),
-            level NVARCHAR(30),
-            chinese_name NVARCHAR(30),
-            identifier NVARCHAR(30),
-            identify_date DATE,
-            remarks NVARCHAR(200),
-            place_name NVARCHAR(100),
-            habitat NVARCHAR(50),
-            longitude INTEGER,
-            latitude INTEGER,
-            remarks_2 NVARCHAR(200),
-            inputer NVARCHAR(30),
-            input_date DATE,
-            habit NVARCHAR(20),
-            body_height NVARCHAR(50),
-            DBH NVARCHAR(50),
-            stem NTEXT,
-            leaf NTEXT,
-            flower NTEXT,
-            fruit NTEXT,
-            host NVARCHAR(100)
-        )
-    """
-    logging.info("%s[ SQLite3 Database File ]  Saved results to:  %s%s"
-                 % (THIN_BAR, sqlite3_file, THIN_BAR))
-    conn = sqlite3.connect(sqlite3_file)
-    try:
-        conn.execute(create_sql)
-        logging.info("Create SQLite3 database file:  %s" % sqlite3_file)
-    except sqlite3.OperationalError as e:
-        logging.warning("SQLite3 file already exists: %s. (%s)"
-                        % (sqlite3_file, e))
-        logging.warning(" *  There may already be information in SQLite3 "
-                        "db file.")
-        logging.warning(" *  Make sure you do not insert duplicate values.\n")
-
-    tuple_of_final_info = (
-                "library_code",             # 0.  馆代码
-                "serial_number",            # 1.  流水号
-                "barcode",                  # 2.  条形码
-                "pattern_type",                     # 3.  模式类型
-                "inventory",                # 4.  库存
-                "specimen_condition",       # 5.  标本状态
-                "collectors",               # 6.  采集人
-                "collection_id",            # 7.  采集号
-                "collection_date",          # 8.  采集日期
-                "collection_country",       # 9.  国家
-                "province_and_city",        # 10. 省市
-                "county",                   # 11. 区县
-                "altitude",                 # 12. 海拔
-                "negative_altitude",        # 13. 负海拔
-                "family",                   # 14. 科
-                "genus",                    # 15. 属
-                "species",                  # 16. 种
-                "namer",                    # 17. 定名人
-                "level",                    # 18. 种下等级
-                "chinese_name",             # 19. 中文名
-                "identifier",               # 20. 鉴定人
-                "identify_date",            # 21. 鉴定日期
-                "remarks",                  # 22. 备注
-                "place_name",               # 23. 地名
-                "habitat",                  # 24. 生境
-                "longitude",                # 25. 经度
-                "latitude",                 # 26. 纬度
-                "remarks_2",                # 27. 备注2
-                "inputer",                  # 28. 录入员
-                "input_date",               # 29. 录入日期
-                "habit",                    # 30. 习性
-                "body_height",              # 31. 体高
-                "DBH",                      # 32. 胸径
-                "stem",                     # 33. 茎
-                "leaf",                     # 34. 叶
-                "flower",                   # 35. 花
-                "fruit",                    # 36. 果实
-                "host"                      # 37. 寄主
-            )
-
-    insert_query = '''INSERT INTO specimen ({0}) VALUES ({1})'''.format(
-               (','.join(tuple_of_final_info)),
-               ','.join('?'*len(tuple_of_final_info)))
-
-    try:
-        with conn:
-            logging.info("    -> Start value insertion ...")
-            conn.executemany(insert_query, out_tuple_list)
-            logging.info("    -> Finished insertion.")
-    except sqlite3.IntegrityError as e:
-        logging.error(e)
-    except sqlite3.ProgrammingError as e:
-        logging.error("Number not correct. (%s)" % e)
-    finally:
-        conn.close()
-
-
 def data_validation(data_file, query_file):
     """Validate data and query files before program run.
 
@@ -1019,8 +936,7 @@ def data_validation(data_file, query_file):
 
     # Check if latin name is missing in data file
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Checking if latin name is missing in '
-                 'data file...')
+    logging.info('[ Start ] 检查 data 文件中的 latin 名是否有缺失 ... ')
     latin_names_in_data_file = []
     for i, each_tuple in enumerate(data_file_tuple_list[1:]):
         # If line is blank line, skip
@@ -1033,21 +949,18 @@ def data_validation(data_file, query_file):
             latin_name = each_tuple[2]
             if len(latin_name.split()) < 2:
                 logging.error(
-                    '[ ERROR ] Latin name at least two words: genus+'
-                    'species. Line %s: %s' %
+                    '[ ERROR ] latin 名需要至少包含: genus+species. [行 %s: invalid latin: %s]' %
                     (i+1, latin_name))
                 critical_error = True
             latin_names_in_data_file.append(each_tuple[2].strip())
         else:
             logging.error(
-                '[ ERROR ] No latin name:  %s (Row: %s)' %
-                (data_file, i+1))
+                '[ ERROR ] data 文件（%s）中存在 Latin 名缺失 [行: %s]' % (data_file, i+1))
             critical_error = True
 
     # Check if latin name is missing in query file
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Checking if latin name is missing in '
-                 'query file...')
+    logging.info('[ Start ] 检查 query 文件中的 latin 名是否有缺失 ... ')
     latin_names_in_query_file = []
     for i, each_tuple in enumerate(query_file_tuple_list):
         # If line is blank line, skip
@@ -1060,69 +973,65 @@ def data_validation(data_file, query_file):
             latin_name = each_tuple[2]
             if len(latin_name.split()) < 2:
                 logging.error(
-                    '[ ERROR ] Latin name at least two words: genus+'
-                    'species. Line %s: %s' %
+                    'latin 名需要至少包含: genus+species. [行 %s: invalid latin: %ss' %
                     (i+1, latin_name))
                 critical_error = True
             latin_names_in_query_file.append(each_tuple[2].strip())
         else:
             logging.error(
-                '[ ERROR ] No latin name:  %s (Row: %s)' %
+                '[ ERROR ] query 文件（%s）中存在 Latin 名缺失 [行: %s)' %
                 (query_file, i+1))
             critical_error = True
 
     if critical_error:
-        logging.error(
-            '[ ERROR ] Please make sure latin names are not missing '
-            'in either data or query file')
+        logging.error('[ ERROR ] 请确保 data 文件及 query 文件中均无 latin 名缺失！')
         raise ValueError()
 
     # Check if number of lines of data file is correct
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Validating if number of lines in data file is '
-                 'correct...')
-    if len(data_file_tuple_list[0]) != DATA_FILE_COLUMN_NUM:
+    logging.info('[ Start ] 开始校验 data 文件的列数目是否正确 ...')
+    if len(data_file_tuple_list[0]) != len(DATA_FILE_HEADER_TUPLE):
         logging.error(
-            '[ ERROR ] Number of columns in data file '
-            'should be: %s (now: %s)' %
-            (DATA_FILE_COLUMN_NUM, len(data_file_tuple_list[0])))
-        raise ValueError('Please check data file.')
+            '[ ERROR ] data 文件的列数目有误：当前为 {}，应该为 {}（{}）'.format(
+                len(data_file_tuple_list[0]),
+                len(QUERY_FILE_HEADER_TUPLE),
+                QUERY_FILE_HEADER_TUPLE))
+        raise ValueError('请检查 data 文件！')
 
     # Check if number of lines of query file is correct
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Validating if number of lines in query file is '
-                 'correct...')
-    if len(query_file_tuple_list[0]) != QUERY_FILE_COLUMN_NUM:
+    logging.info('[ Start ] 开始校验 query 文件的列数目是否正确 ...')
+    if len(query_file_tuple_list[0]) != len(QUERY_FILE_HEADER_TUPLE):
         logging.error(
-            '[ ERROR ] Number of columns in query file '
-            'should be: %s (now: %s)' %
-            (QUERY_FILE_COLUMN_NUM, len(query_file_tuple_list[0])))
-        raise ValueError('Please check query file.')
+            '[ ERROR ] data 文件的列数目有误：当前为 {}，应该为 {}（{}) '.format(
+                len(query_file_tuple_list[0]),
+                len(DATA_FILE_HEADER_TUPLE),
+                DATA_FILE_HEADER_TUPLE))
+        raise ValueError('请检查 query 文件！')
 
     # Check if is there any missing cell in data file
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Checking if any missing cell in data file...')
+    logging.info('[ Start ] 检查 data 文件中是否有缺失的单元格 ...')
     for i, row in enumerate(data_file_tuple_list):
         for j, cell in enumerate(row):
             if not cell:
                 logging.warning(
-                    '[ WARNING ] Blank cell: [%s:  Row: %s, Column: %s]' %
+                    '[ WARNING ] data 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
                     (data_file, i+1, j+1))
 
     # Check if is there any missing cell in query file
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Checking if any missing cell in query file...')
+    logging.info('[ Start ] 检查 query 文件中是否有缺失的单元格 ...')
     for i, row in enumerate(query_file_tuple_list):
         for j, cell in enumerate(row):
             if not cell:
                 logging.warning(
-                    '[ WARNING ] Blank cell: [%s:  Row: %s, Column: %s]' %
+                    '[ WARNING ] query 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
                     (query_file, i+1, j+1))
 
     # Check if latin names in query file in data file
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] Validating if latin names (in query file) in '
-                 'data file...')
+    logging.info('[ Start ] 检查 query 文件中的 latin 名是否在 data 文件中也存在 ...')
     tmp_latin_name_set = set([])
     latin_names_set_from_data_file = set(latin_names_in_data_file)
     for i, latin_name in enumerate(latin_names_in_query_file):
@@ -1130,8 +1039,8 @@ def data_validation(data_file, query_file):
             if latin_name not in tmp_latin_name_set:
                 tmp_latin_name_set.add(latin_name)
                 logging.warning(
-                    '[ WARNING ] [%s:  Line %s]  %s  ' %
-                    (query_file, i+1, latin_name))
+                    '[ WARNING ] query 文件（%s）中的 latin 名（%s）不在 data 文件中 [行 %s]' %
+                    (query_file, latin_name, i+1))
     logging.info(THIN_BAR_NO_NEWLINE)
 
     # # Check if Latin names in built-in Latin name list
@@ -1530,4 +1439,5 @@ def gui_main():
 
 
 if __name__ == '__main__':
-    gui_main()
+    # gui_main()
+    main()
