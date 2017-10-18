@@ -85,6 +85,7 @@ __all__ = ['Query', 'write_to_xlsx_file', 'gui_main']
 # You can change settings here if needed
 # ==================================================
 POOL_NUM = 30
+MAX_ERROR_NUM = 50
 
 LIBRARY_CODE = "FUS"
 COLLECTION_COUNTRY = "中国"
@@ -907,6 +908,8 @@ def data_validation(data_file, query_file):
     This will save time. If there is error in data file, program may crush
     after long time run. So it's better to validate data file before running.
     """
+    error_list = list()
+
     # Get file tuple list
     data_file_tuple_list = XlsxFile(data_file).xlsx_matrix
     query_file_tuple_list = XlsxFile(query_file).xlsx_matrix
@@ -916,8 +919,8 @@ def data_validation(data_file, query_file):
     critical_error = False
 
     # Check if latin name is missing in data file
-    logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 检查 data 文件（{}）中的 latin 名是否有缺失 ... '.format(data_file))
+    error_list.append(THIN_BAR_NO_NEWLINE)
+    error_list.append('[ Start ] 检查 data 文件（{}）中的 latin 名是否有缺失 ... '.format(data_file))
     latin_names_in_data_file = []
     for i, each_tuple in enumerate(data_file_tuple_list[1:]):
         # If line is blank line, skip
@@ -925,20 +928,27 @@ def data_validation(data_file, query_file):
             if not each_tuple[0] and not each_tuple[2]:
                 continue
         except Exception as e:
-            logging.error('Line %s: %s' % (i + 1, e))
+            error_list.append('Line %s: %s' % (i + 1, e))
         if each_tuple[2]:
             latin_name = each_tuple[2]
             if len(latin_name.split()) < 2:
-                logging.error('  （{} 行）latin 名需要至少包含: genus + species：{}'.format(i + 2, latin_name))
+                error_list.append('  （{} 行）latin 名需要至少包含: genus + species：{}'.format(i + 2, latin_name))
                 critical_error = True
             latin_names_in_data_file.append(each_tuple[2].strip())
         else:
-            logging.error('  （{} 行）latin 名缺失'.format(i + 1, data_file))
+            error_list.append('  （{} 行）latin 名缺失'.format(i + 1, data_file))
             critical_error = True
+
+    if len(error_list) > MAX_ERROR_NUM:
+        error_list = error_list[:MAX_ERROR_NUM]
+        error_list.append('... ...')
+        error_list.append('错误过多（大于 {} 个），是否文件错误？'.format(MAX_ERROR_NUM))
+        logging.error('\n'.join(error_list))
+        return False
 
     # Check if latin name is missing in query file
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 检查 query 文件（{}）中的 latin 名是否有缺失 ... '.format(query_file))
+    error_list.append('[ Start ] 检查 query 文件（{}）中的 latin 名是否有缺失 ... '.format(query_file))
     latin_names_in_query_file = []
     for i, each_tuple in enumerate(query_file_tuple_list):
         # If line is blank line, skip
@@ -946,76 +956,107 @@ def data_validation(data_file, query_file):
             if not each_tuple[0] and not each_tuple[2]:
                 continue
         except Exception as e:
-            logging.error('Line %s: %s' % (i + 1, e))
+            error_list.append('Line %s: %s' % (i + 1, e))
         if each_tuple[3]:
             latin_name = each_tuple[3]
             if len(latin_name.split()) < 2:
-                logging.error('  （{} 行）latin 名需要至少包含: genus + species：{}'.format(i + 1, latin_name))
+                error_list.append('  （{} 行）latin 名需要至少包含: genus + species：{}'.format(i + 1, latin_name))
                 critical_error = True
             latin_names_in_query_file.append(latin_name.strip())
         else:
-            logging.error('  （{} 行）latin 名缺失'.format(i + 1, query_file))
+            error_list.append('  （{} 行）latin 名缺失'.format(i + 1, query_file))
             critical_error = True
 
+    if len(error_list) > MAX_ERROR_NUM:
+        error_list = error_list[:MAX_ERROR_NUM]
+        error_list.append('... ...')
+        error_list.append('错误过多（大于 {} 个），是否文件错误？'.format(MAX_ERROR_NUM))
+        logging.error('\n'.join(error_list))
+        return False
+
     if critical_error:
-        logging.error('[ ERROR ] 请确保 data 文件及 query 文件中均无 latin 名缺失！')
-        raise ValueError()
+        error_list.append('[ ERROR ] 请确保 data 文件及 query 文件中均无 latin 名缺失！')
+        logging.info('\n'.join(error_list))
+        return False
 
     # Check if number of lines of data file is correct
-    logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 开始校验 data 文件的列数目是否正确 ...')
+    error_list.append(THIN_BAR_NO_NEWLINE)
+    error_list.append('[ Start ] 开始校验 data 文件的列数目是否正确 ...')
     if len(data_file_tuple_list[0]) != len(DATA_FILE_HEADER_TUPLE):
-        logging.error(
+        error_list.append(
             '[ ERROR ] data 文件的列数目有误：当前为 {}，应该为 {}（{}）'.format(
                 len(data_file_tuple_list[0]),
                 len(QUERY_FILE_HEADER_TUPLE),
                 QUERY_FILE_HEADER_TUPLE))
-        raise ValueError('请检查 data 文件！')
+        logging.info('\n'.join(error_list))
+        return False
 
     # Check if number of lines of query file is correct
-    logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 开始校验 query 文件的列数目是否正确 ...')
+    error_list.append(THIN_BAR_NO_NEWLINE)
+    error_list.append('[ Start ] 开始校验 query 文件的列数目是否正确 ...')
     if len(query_file_tuple_list[0]) != len(QUERY_FILE_HEADER_TUPLE):
-        logging.error(
+        error_list.append(
             '[ ERROR ] data 文件的列数目有误：当前为 {}，应该为 {}（{}) '.format(
                 len(query_file_tuple_list[0]),
                 len(DATA_FILE_HEADER_TUPLE),
                 DATA_FILE_HEADER_TUPLE))
-        raise ValueError('请检查 query 文件！')
+        logging.info('\n'.join(error_list))
+        return False
 
     # Check if is there any missing cell in data file
-    logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 检查 data 文件中是否有缺失的单元格 ...')
+    error_list.append(THIN_BAR_NO_NEWLINE)
+    error_list.append('[ Start ] 检查 data 文件中是否有缺失的单元格 ...')
     for i, row in enumerate(data_file_tuple_list):
         for j, cell in enumerate(row):
             if not cell:
-                logging.warning(
+                error_list.append(
                     '    -> data 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
                     (data_file, i + 1, j + 1))
 
+    if len(error_list) > MAX_ERROR_NUM:
+        error_list = error_list[:MAX_ERROR_NUM]
+        error_list.append('... ...')
+        error_list.append('错误过多（大于 {} 个），是否文件错误？'.format(MAX_ERROR_NUM))
+        logging.error('\n'.join(error_list))
+        return False
+
     # Check if is there any missing cell in query file
-    logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 检查 query 文件中是否有缺失的单元格 ...')
+    error_list.append(THIN_BAR_NO_NEWLINE)
+    error_list.append('[ Start ] 检查 query 文件中是否有缺失的单元格 ...')
     for i, row in enumerate(query_file_tuple_list):
         for j, cell in enumerate(row):
             if not cell:
-                logging.warning(
+                error_list.append(
                     '    -> query 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
                     (query_file, i + 1, j + 1))
 
+    if len(error_list) > MAX_ERROR_NUM:
+        error_list = error_list[:MAX_ERROR_NUM]
+        error_list.append('... ...')
+        error_list.append('错误过多（大于 {} 个），是否文件错误？'.format(MAX_ERROR_NUM))
+        logging.error('\n'.join(error_list))
+        return False
+
     # Check if latin names in query file in data file
-    logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 检查 query 文件中的 latin 名是否在 data 文件中也存在 ...')
+    error_list.append(THIN_BAR_NO_NEWLINE)
+    error_list.append('[ Start ] 检查 query 文件中的 latin 名是否在 data 文件中也存在 ...')
     tmp_latin_name_set = set([])
     latin_names_set_from_data_file = set(latin_names_in_data_file)
     for i, latin_name in enumerate(latin_names_in_query_file):
         if latin_name not in latin_names_set_from_data_file:
             if latin_name not in tmp_latin_name_set:
                 tmp_latin_name_set.add(latin_name)
-                logging.warning(
+                error_list.append(
                     '    -> query 文件（%s）中的 latin 名（%s）不在 data 文件中 [行 %s]' %
                     (query_file, latin_name, i + 1))
-    logging.info(THIN_BAR_NO_NEWLINE)
+    error_list.append(THIN_BAR_NO_NEWLINE)
+
+    if len(error_list) > MAX_ERROR_NUM:
+        error_list = error_list[:MAX_ERROR_NUM]
+        error_list.append('... ...')
+        error_list.append('错误过多（大于 {} 个），是否文件错误？'.format(MAX_ERROR_NUM))
+        logging.error('\n'.join(error_list))
+        return False
 
     # # Check if Latin names in built-in Latin name list
     # try:
@@ -1053,7 +1094,9 @@ def data_validation(data_file, query_file):
     #                 logging.warning(
     #                     '[ WARNING ] [%s:  Line %s]  %s  ' %
     #                     (query_file, i+1, latin_name))
-    logging.info(BAR)
+    error_list.append(BAR)
+    logging.info('\n'.join(error_list))
+    return True
 
 
 def arg_parse():
@@ -1418,8 +1461,11 @@ class ThreadedTask(threading.Thread):
         try:
             # Data validation
             self.log_label_value.set('开始进行数据校验 ...')
-            data_validation(data_file=self.data_file, query_file=self.query_file)
-
+            ok = data_validation(data_file=self.data_file, query_file=self.query_file)
+            if not ok:
+                self.queue.put('数据校验失败')
+                self.log_label_value.set("数据校验失败！")
+                return
             self.log_label_value.set('开始进行预处理，请耐心等待 ... ')
             query = Query(self.query_file, self.data_file)
 
@@ -1434,10 +1480,11 @@ class ThreadedTask(threading.Thread):
 
             time_end = time.time()
             self.log_label_value.set('任务完成，共花费时间: %.2f 秒' % (time_end - time_start))
+            self.queue.put(log_info)
         except Exception as e:
-            log_info = e.message
-
-        self.queue.put(log_info)
+            logging.error(e.message)
+            self.queue.put('ERROR')
+            self.log_label_value.set("失败！")
 
 
 def main():
