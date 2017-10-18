@@ -869,7 +869,7 @@ class Query(object):
             logging.info("       采集号（{}）".format(each_query_tuple[0]))
             logging.info("       流水号（{}）".format(each_query_tuple[1]))
             logging.info("       条形码（{}）".format(each_query_tuple[2]))
-            logging.info("       物种名（{}）".format(each_query_tuple[3]))
+            logging.info("       物种名（{}）\n".format(each_query_tuple[3]))
             out_tuple = self._formatted_single_output(each_query_tuple)
             out_tuple_list.append(out_tuple)
 
@@ -900,22 +900,14 @@ def write_to_xlsx_file(out_tuple_list, xlsx_outfile_name="out.xlsx"):
         ws1.append(tuple_row)
     try:
         out_wb.save(filename=xlsx_outfile_name)
-        logging.info("%s[ xlsx File ]  Saved results to  %s%s"
-                     % (THIN_BAR, xlsx_outfile_name, THIN_BAR))
-        logging.warning("The result was saved to xlsx file: %s"
-                        % xlsx_outfile_name)
+        logging.info("{}[ xlsx File ]  结果已写入文件：{}{}".format(
+            THIN_BAR, xlsx_outfile_name, THIN_BAR))
     except IOError as e:
         basename, dot, ext = xlsx_outfile_name.rpartition(".")
         alt_xlsx_outfile = "%s.alt.%s" % (basename, ext)
-        logging.info("\n%s[ xlsx File ]  Saved results to  %s%s"
-                     % (THIN_BAR, alt_xlsx_outfile, THIN_BAR))
-        logging.error(" *  [PERMISSION DENIED] Is file"
-                      " [ %s ] open?\n    ( %s )"
-                      % (xlsx_outfile_name, e))
+        logging.error(" *  无权限写入文件：{}，当前是否处于打开状态而被占用？{}".format(xlsx_outfile_name, e))
         out_wb.save(filename=alt_xlsx_outfile)
-        logging.warning(" @  Don't worry, you won't lose anything.\n")
-        logging.warning("The result was saved to another file: %s"
-                        % alt_xlsx_outfile)
+        logging.info("\n{}[ xlsx File ]  结果已写入临时文件：{}{}".format(THIN_BAR, alt_xlsx_outfile, THIN_BAR))
 
 
 def data_validation(data_file, query_file):
@@ -929,7 +921,7 @@ def data_validation(data_file, query_file):
     query_file_tuple_list = XlsxFile(query_file).xlsx_matrix
 
     logging.info(BAR)
-    logging.info(" == DATA VALIDATION ==")
+    logging.info(" == 数据校验 ==")
 
     critical_error = False
 
@@ -947,14 +939,11 @@ def data_validation(data_file, query_file):
         if each_tuple[2]:
             latin_name = each_tuple[2]
             if len(latin_name.split()) < 2:
-                logging.error(
-                    '[ ERROR ] latin 名需要至少包含: genus+species. [行 %s: invalid latin: %s]' %
-                    (i + 1, latin_name))
+                logging.error('  （{} 行）latin 名需要至少包含: genus + species：{}'.format(i + 1, latin_name))
                 critical_error = True
             latin_names_in_data_file.append(each_tuple[2].strip())
         else:
-            logging.error(
-                '[ ERROR ] data 文件（%s）中存在 Latin 名缺失 [行: %s]' % (data_file, i + 1))
+            logging.error('  （{} 行）latin 名缺失'.format(i + 1, data_file))
             critical_error = True
 
     # Check if latin name is missing in query file
@@ -968,18 +957,14 @@ def data_validation(data_file, query_file):
                 continue
         except Exception as e:
             logging.error('Line %s: %s' % (i + 1, e))
-        if each_tuple[2]:
-            latin_name = each_tuple[2]
+        if each_tuple[3]:
+            latin_name = each_tuple[3]
             if len(latin_name.split()) < 2:
-                logging.error(
-                    'latin 名需要至少包含: genus+species. [行 %s: invalid latin: %ss' %
-                    (i + 1, latin_name))
+                logging.error('  （{} 行）latin 名需要至少包含: genus + species：{}'.format(i + 1, latin_name))
                 critical_error = True
-            latin_names_in_query_file.append(each_tuple[2].strip())
+            latin_names_in_query_file.append(latin_name.strip())
         else:
-            logging.error(
-                '[ ERROR ] query 文件（%s）中存在 Latin 名缺失 [行: %s)' %
-                (query_file, i + 1))
+            logging.error('  （{} 行）latin 名缺失'.format(i + 1, query_file))
             critical_error = True
 
     if critical_error:
@@ -1015,7 +1000,7 @@ def data_validation(data_file, query_file):
         for j, cell in enumerate(row):
             if not cell:
                 logging.warning(
-                    '[ WARNING ] data 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
+                    '  [ WARNING ] data 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
                     (data_file, i + 1, j + 1))
 
     # Check if is there any missing cell in query file
@@ -1025,7 +1010,7 @@ def data_validation(data_file, query_file):
         for j, cell in enumerate(row):
             if not cell:
                 logging.warning(
-                    '[ WARNING ] query 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
+                    '  [ WARNING ] query 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
                     (query_file, i + 1, j + 1))
 
     # Check if latin names in query file in data file
@@ -1038,7 +1023,7 @@ def data_validation(data_file, query_file):
             if latin_name not in tmp_latin_name_set:
                 tmp_latin_name_set.add(latin_name)
                 logging.warning(
-                    '[ WARNING ] query 文件（%s）中的 latin 名（%s）不在 data 文件中 [行 %s]' %
+                    '  [ WARNING ] query 文件（%s）中的 latin 名（%s）不在 data 文件中 [行 %s]' %
                     (query_file, latin_name, i + 1))
     logging.info(THIN_BAR_NO_NEWLINE)
 
@@ -1362,7 +1347,7 @@ class Application(tk.Frame):
                 break
         self.query_content_area.delete("0.1", "end-1c")
         self.query_content_area.insert("end", query_content)
-        self.input_status_label_value.set('data 文件已选择：%s'.format(data_file_path))
+        self.input_status_label_value.set('data 文件已选择：{}'.format(data_file_path))
         self.data_file = data_file_path
 
     def _do_query(self):
@@ -1371,7 +1356,7 @@ class Application(tk.Frame):
 
         out_xlsx_file = self.out_file_entry.get().strip()
 
-        logging.info("植物标本信息处理软件:%s" % BAR)
+        logging.info("植物标本信息处理软件")
         if any([self.query_file == "query.xlsx",
                 self.data_file == 'data.xlsx',
                 out_xlsx_file == 'output.xslx']):
@@ -1430,5 +1415,5 @@ def gui_main():
 
 
 if __name__ == '__main__':
-    # gui_main()
-    main()
+    gui_main()
+    # main()
