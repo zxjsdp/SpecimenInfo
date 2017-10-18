@@ -229,18 +229,19 @@ class XlsxFile(object):
             self.wb = openpyxl.load_workbook(excel_file)
         # Invalid xlsx format
         except openpyxl.utils.exceptions.InvalidFileException as e:
-            logging.error("Invalid xlsx format.\n%s" % e)
-            sys.exit(1)
+            logging.error("[ ERROR ] Invalid xlsx format.\n%s" % e)
+            raise ValueError('[ ERROR ] Invalid xlsx format: {}'.format(e))
         except IOError as e:
-            logging.error("No such xlsx file: %s. (%s)" % (excel_file, e))
-            sys.exit(1)
+            logging.error("[ ERROR ] No such xlsx file: %s. (%s)" % (excel_file, e))
+            raise ValueError('[ ERROR ] IOError: {}. {}'.format(excel_file, e))
         except BaseException as e:
             logging.error(e)
-            sys.exit(1)
+            raise ValueError('[ Error ] {}'.format(e))
 
         self.ws = self.wb.active
         if not self.ws:
-            raise ValueError("无法获取 xlsx 文件中的 active sheet：{}".format(excel_file))
+            logging.error("[ ERROR ] 无法获取 xlsx 文件中的 active sheet：{}".format(excel_file))
+            raise ValueError("[ ERROR ] 无法获取 xlsx 文件中的 active sheet：{}".format(excel_file))
         self.ws_title = self.ws.title
         self.xlsx_matrix = []
         self.species_info_dict = {}
@@ -254,8 +255,7 @@ class XlsxFile(object):
     def load_specific_sheet(self, sheet_name):
         """Specify the sheet name you want to open."""
         if sheet_name not in self.all_sheet_names:
-            logging.error("There is no such sheet in xlsx file: %s"
-                          % sheet_name)
+            logging.error("No such sheet in xlsx file: %s" % sheet_name)
             sys.exit(1)
         else:
             logging.info("[ Load Sheet by Name  ]:  Openning sheet...")
@@ -1363,10 +1363,14 @@ class Application(tk.Frame):
                 out_xlsx_file == 'output.xslx']):
             logging.warning("您使用了一个或多个默认参数名称.")
 
-        # self.log_area.update_idletasks()
         logging.info("%s    [  Query file  ]  %s" % (THIN_BAR, self.query_file))
         logging.info("    [   Data file  ]  %s" % self.data_file)
         logging.info("    [ xlsx Outfile ]  %s" % out_xlsx_file)
+
+        if not self.query_file or not self.data_file or not out_xlsx_file:
+            logging.error("缺少参数！")
+            self.log_label_value.set('缺少参数')
+            return
 
         ThreadedTask(self.data_file, self.query_file, out_xlsx_file, self.log_label_value, self.queue).start()
         self.master.after(1000, self.process_queue)
