@@ -43,14 +43,23 @@ Usage
 
 import re
 import os
-import bs4
+try:
+    import bs4
+except ImportError:
+    bs4 = None
 import sys
 import time
 import json
 import Queue
 import logging
-import openpyxl
-import requests
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
+try:
+    import requests
+except ImportError:
+    requests = None
 import argparse
 import threading
 from collections import namedtuple
@@ -75,7 +84,6 @@ __all__ = ['Query', 'write_to_xlsx_file', 'gui_main']
 # You can change settings here if needed
 # ==================================================
 POOL_NUM = 30
-SHOW_GARBAGE_LOG = False
 
 LIBRARY_CODE = "FUS"
 COLLECTION_COUNTRY = "中国"
@@ -201,8 +209,8 @@ console.setFormatter(formatter)
 logging.getLogger("").addHandler(console)
 
 # Seppress logging info from urllib3 which was called by requests
-requests_log = logging.getLogger("requests")
-requests_log.setLevel(logging.CRITICAL)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def check_unicode(unknown):
@@ -279,12 +287,6 @@ class XlsxFile(object):
             for i, cell in enumerate(row):
                 row_container.append(cell.value)
             self.xlsx_matrix.append(tuple(row_container))
-        if SHOW_GARBAGE_LOG:
-            logging.info("[ Add Data to Matrix  ]:  Successful")
-            logging.info("[    Matrix Row Infos ]:  No. of Rows:  %d"
-                         % len(self.xlsx_matrix))
-            logging.info("[    Matrix Col Infos ]:  No. of Cols:  %d"
-                         % len(self.xlsx_matrix[0]))
 
     def get_xlsx_data_dict(self, key_column_index):
         """Return a dictionary with data from xlsx matrix.
@@ -313,8 +315,7 @@ class XlsxFile(object):
             # format error (If there are more than one blanks or tabs)
             species_name = " ".join(elements[key_column_index].split())
             xlsx_data_dict[species_name] = tuple(elements)
-        if SHOW_GARBAGE_LOG:
-            logging.info("[ Generate Dictionary ]:  Successful")
+
         return xlsx_data_dict
 
 
@@ -351,8 +352,6 @@ class WebInfo(object):
 
     def _cook_soup(self):
         """Prepare requests response and BeautifulSoup soup."""
-        if SHOW_GARBAGE_LOG:
-            logging.info("    [   Web   ]  Searching Internet ...")
         logging.info("    [ Species ]  %s" % self.species_name)
         if len(self.species_name.split()) == 2:
             genus, species = self.species_name.split()
@@ -366,8 +365,6 @@ class WebInfo(object):
                         + genus
                         + '%20'
                         + species)
-        if SHOW_GARBAGE_LOG:
-            logging.info('    [   URL   ]  %s' % requests_url)
         try:
             self.response = requests.get(requests_url).text
             self.soup = bs4.BeautifulSoup(self.response, "html.parser")
@@ -389,9 +386,6 @@ class WebInfo(object):
     @property
     def all_paragraph_tuple(self):
         """All paragraphes in the website with <p> tags."""
-        if SHOW_GARBAGE_LOG:
-            logging.info('    [   INFO  ]  Start extracting informations '
-                         'from web...')
         if not self.soup:
             return None
         paragraphe_tuple_list = [p.find(text=True)
@@ -487,10 +481,6 @@ class WebInfo(object):
                               % (genus, species))
         try:
             namer = re_namer.findall(self.response)[0].strip()
-            if SHOW_GARBAGE_LOG:
-                logging.info('    [   INFO  ]        genus:  |  %s（属）' % genus)
-                logging.info('    [   INFO  ]      species:  |  %s（种）' % species)
-                logging.info('    [   INFO  ]       people:  |  %s（命名人）' % namer)
         except IndexError as e:
             logging.error("  * [ WARNING ]  无法从网络获取命名人：{}".format(self.species_name))
             namer = ""
@@ -529,9 +519,7 @@ class WebInfoCacheMultithreading(object):
         query_tuple_list = QueryParser(self.query_file).query_tuple
         non_repeatitive_species_name_list = list(
             set([_[3] for _ in query_tuple_list]))
-        if SHOW_GARBAGE_LOG:
-            logging.info("     None repeatitive species name number:  %d"
-                         % len(non_repeatitive_species_name_list))
+
         return non_repeatitive_species_name_list
 
     def _single_query(self, one_species_name):
@@ -626,8 +614,6 @@ class Query(object):
         # ===============================================================
         if species_name in _web_data_cache_dict:
             web_info_tuple = _web_data_cache_dict[species_name]
-            if SHOW_GARBAGE_LOG:
-                logging.info("    [ Web  Info ]  Use Cache")
         else:
             if len(one_query_tuple[3].split()) >= 2:
                 web_info_tuple = tuple([
@@ -643,8 +629,6 @@ class Query(object):
         # ===============================================================
         if collection_id_prefix in _xlsx_data_cache_dict:
             offline_info_tuple = _xlsx_data_cache_dict[collection_id_prefix]
-            if SHOW_GARBAGE_LOG:
-                logging.info("    [ File Info ]  Use Cache")
         else:
             offline_info_tuple = None
 
@@ -926,8 +910,7 @@ def data_validation(data_file, query_file):
     data_file_tuple_list = XlsxFile(data_file).xlsx_matrix
     query_file_tuple_list = XlsxFile(query_file).xlsx_matrix
 
-    logging.info(BAR)
-    logging.info(" == 数据校验 ==")
+    logging.info("{}数据校验开始 ...".format(THIN_BAR))
 
     critical_error = False
 
@@ -1006,7 +989,7 @@ def data_validation(data_file, query_file):
         for j, cell in enumerate(row):
             if not cell:
                 logging.warning(
-                    '  [ WARNING ] data 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
+                    '    -> data 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
                     (data_file, i + 1, j + 1))
 
     # Check if is there any missing cell in query file
@@ -1016,7 +999,7 @@ def data_validation(data_file, query_file):
         for j, cell in enumerate(row):
             if not cell:
                 logging.warning(
-                    '  [ WARNING ] query 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
+                    '    -> query 文件中存在缺失的单元格: [%s:  行: %s, 列: %s]' %
                     (query_file, i + 1, j + 1))
 
     # Check if latin names in query file in data file
@@ -1029,7 +1012,7 @@ def data_validation(data_file, query_file):
             if latin_name not in tmp_latin_name_set:
                 tmp_latin_name_set.add(latin_name)
                 logging.warning(
-                    '  [ WARNING ] query 文件（%s）中的 latin 名（%s）不在 data 文件中 [行 %s]' %
+                    '    -> query 文件（%s）中的 latin 名（%s）不在 data 文件中 [行 %s]' %
                     (query_file, latin_name, i + 1))
     logging.info(THIN_BAR_NO_NEWLINE)
 
@@ -1311,6 +1294,9 @@ class Application(tk.Frame):
 
     def _choose_query_file(self):
         """Command for button: Choose query file from combobox."""
+        if not Application.check_dependencies():
+            return
+
         self.query_file = self.query_file_combobox.get()
         if not self.query_file or \
                 not os.path.isfile(self.query_file):
@@ -1335,6 +1321,9 @@ class Application(tk.Frame):
 
     def _choose_data_file(self):
         """Command for button: choose data file from combobox."""
+        if not Application.check_dependencies():
+            return
+
         data_file_path = self.data_file_combobox.get()
         if not data_file_path or not os.path.isfile(data_file_path):
             sys.stderr.write('data 文件无效：{}. 请重新选择\n'.format(data_file_path))
@@ -1359,11 +1348,15 @@ class Application(tk.Frame):
 
     def _do_query(self):
         """Main GUI program and core function."""
+        if not Application.check_dependencies():
+            return
+
         self.log_label_value.set('任务开始 ...')
 
         out_xlsx_file = self.out_file_entry.get().strip()
 
-        logging.info("植物标本信息处理软件")
+        logging.info('{}植物标本信息处理软件{}'.format(BAR, BAR))
+
         if any([self.query_file == "query.xlsx",
                 self.data_file == 'data.xlsx',
                 out_xlsx_file == 'output.xslx']):
@@ -1385,6 +1378,25 @@ class Application(tk.Frame):
             print("blank")
             self.master.after(1000, self.process_queue)
 
+    @staticmethod
+    def check_dependencies():
+        dependency_error_message = '请安装依赖包：pip install'
+        dependency_ok = True
+        if not bs4:
+            dependency_error_message += ' bs4'
+            dependency_ok = False
+        if not openpyxl:
+            dependency_error_message += ' openpyxl'
+            dependency_ok = False
+        if not requests:
+            dependency_error_message += ' requests'
+            dependency_ok = False
+
+        if not dependency_ok:
+            logging.error(dependency_error_message)
+
+        return dependency_ok
+
 
 class ThreadedTask(threading.Thread):
     def __init__(self, data_file, query_file, output_file, log_label_widget, queue):
@@ -1398,24 +1410,27 @@ class ThreadedTask(threading.Thread):
     def run(self):
         time_start = time.time()
 
-        # Data validation
-        self.log_label_value.set('开始进行数据校验 ...')
-        data_validation(data_file=self.data_file, query_file=self.query_file)
+        try:
+            # Data validation
+            self.log_label_value.set('开始进行数据校验 ...')
+            data_validation(data_file=self.data_file, query_file=self.query_file)
 
-        self.log_label_value.set('开始进行预处理，请耐心等待 ... ')
-        query = Query(self.query_file, self.data_file)
+            self.log_label_value.set('开始进行预处理，请耐心等待 ... ')
+            query = Query(self.query_file, self.data_file)
 
-        self.log_label_value.set('开始进行多进程处理，请耐心等待 ... ')
-        out_tuple_list, log_info = query.do_multi_query()
+            self.log_label_value.set('开始进行多进程处理，请耐心等待 ... ')
+            out_tuple_list, log_info = query.do_multi_query()
 
-        write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=self.out_xlsx_file)
-        write_result = '已将 {} 条记录写入到输出文件中；{}！'.format(
-            len(out_tuple_list), self.out_xlsx_file)
-        self.log_label_value.set(write_result)
-        log_info += '\n{}'.format(write_result)
+            write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=self.out_xlsx_file)
+            write_result = '已将 {} 条记录写入到输出文件中；{}！'.format(
+                len(out_tuple_list), self.out_xlsx_file)
+            self.log_label_value.set(write_result)
+            log_info += '\n{}'.format(write_result)
 
-        time_end = time.time()
-        self.log_label_value.set('任务完成，共花费时间: %.2f 秒' % (time_end - time_start))
+            time_end = time.time()
+            self.log_label_value.set('任务完成，共花费时间: %.2f 秒' % (time_end - time_start))
+        except Exception as e:
+            log_info = e.message
 
         self.queue.put(log_info)
 
