@@ -927,7 +927,7 @@ def data_validation(data_file, query_file):
 
     # Check if latin name is missing in data file
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 检查 data 文件中的 latin 名是否有缺失 ... ')
+    logging.info('[ Start ] 检查 data 文件（{}）中的 latin 名是否有缺失 ... '.format(data_file))
     latin_names_in_data_file = []
     for i, each_tuple in enumerate(data_file_tuple_list[1:]):
         # If line is blank line, skip
@@ -939,7 +939,7 @@ def data_validation(data_file, query_file):
         if each_tuple[2]:
             latin_name = each_tuple[2]
             if len(latin_name.split()) < 2:
-                logging.error('  （{} 行）latin 名需要至少包含: genus + species：{}'.format(i + 1, latin_name))
+                logging.error('  （{} 行）latin 名需要至少包含: genus + species：{}'.format(i + 2, latin_name))
                 critical_error = True
             latin_names_in_data_file.append(each_tuple[2].strip())
         else:
@@ -948,7 +948,7 @@ def data_validation(data_file, query_file):
 
     # Check if latin name is missing in query file
     logging.info(THIN_BAR_NO_NEWLINE)
-    logging.info('[ Start ] 检查 query 文件中的 latin 名是否有缺失 ... ')
+    logging.info('[ Start ] 检查 query 文件（{}）中的 latin 名是否有缺失 ... '.format(query_file))
     latin_names_in_query_file = []
     for i, each_tuple in enumerate(query_file_tuple_list):
         # If line is blank line, skip
