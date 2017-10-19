@@ -62,5 +62,8 @@ target/
 
 # log file and cache file
 log.txt
+cache.json
 web_cache.json
 
+# JetBrains
+.idea/

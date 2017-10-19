@@ -83,10 +83,11 @@ Qeury File and Data File Format
 
     You need these information for query xlsx file:
 
-    1. 流水号
-    2. 条形码
-    3. 物种名（二名法）
-    4. 同一物种编号
+    1. 物种编号
+    2. 流水号
+    3. 条形码
+    4. 物种名（二名法）
+    5. 同一物种编号
 
 2. Data file
 
