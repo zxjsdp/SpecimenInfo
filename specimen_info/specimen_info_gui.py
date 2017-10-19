@@ -857,10 +857,10 @@ class Query(object):
                 logging.info('  {} - {} Done!'.format(i - 9, i + 1))
             log_info.append(
                 "[ {} ] {}\n\n".format(i + 1, each_query_tuple[2]) +
-                "       采集号（{}）\n".format(each_query_tuple[0]) +
-                "       流水号（{}）\n".format(each_query_tuple[1]) +
-                "       条形码（{}）\n".format(str(each_query_tuple[2]).zfill(8)) +
-                "       物种名（{}）\n\n".format(each_query_tuple[3])
+                "       采集号：{}\n".format(each_query_tuple[0]) +
+                "       流水号：{}\n".format(each_query_tuple[1]) +
+                "       条形码：{}\n".format(str(each_query_tuple[2]).zfill(8)) +
+                "       物种名：{}\n\n".format(each_query_tuple[3])
             )
             out_tuple = self._formatted_single_output(each_query_tuple)
             out_tuple_list.append(out_tuple)
@@ -1494,18 +1494,26 @@ def main():
         args.query_file,
         args.data_file,
         args.output_file)
+
+    time_start = time.time()
+
     # Data validation before program run
     try:
-        data_validation(offline_data_file, query_file)
+        ok = data_validation(offline_data_file, query_file)
+        if not ok:
+            raise ValueError("数据校验失败！")
     except Exception as e:
         logging.error('无法进行数据校验，跳过校验 ... （原因：%s）' % e)
 
     try:
-        q = Query(query_file, offline_data_file)
-        out_tuple_list, log_info = q.do_multi_query()
+        query = Query(query_file, offline_data_file)
+        out_tuple_list, log_info = query.do_multi_query()
         write_to_xlsx_file(out_tuple_list, xlsx_outfile_name=output_file)
     except KeyboardInterrupt as e:
         raise
+
+    time_end = time.time()
+    logging.info('Time used: %.4f' % (time_end - time_start))
 
 
 def gui_main():
